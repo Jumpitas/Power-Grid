@@ -6,8 +6,9 @@
 
 
 class PowerPlant:
-    def __init__(self, price, resource_type=[], resource_num=0, is_hybrid=False, is_eco=False):
+    def __init__(self, price, houses, resource_type=[], resource_num=0, is_hybrid=False, is_eco=False):
         self.price = price
+        self.houses = houses
         self.resource_type = resource_type
         self.in_storage = {}
         for item in self.resource_type: 
