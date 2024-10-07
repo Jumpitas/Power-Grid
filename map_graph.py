@@ -59,75 +59,101 @@ cities = {
 }
 
 edges = [
-
-    ("SEA", "POR", 3),    # Seattle to Portland
-    ("SEA", "BIL", 9),  # Seattle to Billings
-    ("SEA", "BOI", 12),   # Seattle to Boise
-    ("POR", "BOI", 13),   # Portland to Boise
-    ("POR", "SFO", 24),  # Portland to San Francisco
-    ("BIL", "CHE", 9),  # Billings to Cheyenne
-    ("BIL", "BOI", 12),   # Billings to Boise
-    ("BIL", "FRG", 17),  # Billings to Fargo
-    ("BIL", "MIN", 18),  # Billings to Minneapolis
-    ("BOI", "", ),  # Billings to ............................. (verificado, SEA POR BIL, acrescentado para continuar a seguir tipo queue de BFS,  BOI-SFO-CHE-FRG-MIN
-
-
-
-
-
-
-
-
-
-    ("CHE", "DEN", 8),    # Cheyenne to Denver
-    ("DEN", "OMA", 13),   # Denver to Omaha
-
-
-    ("SFO", "LVG", 9),    # San Francisco to Las Vegas
-    ("SFO", "LAX", 9),    # San Francisco to Los Angeles
-    ("LAX", "LVG", 9),    # Los Angeles to Las Vegas
-    ("LAX", "SDG", 3),    # Los Angeles to San Diego
-    ("LVG", "SLC", 12),   # Las Vegas to Salt Lake City
-    ("SLC", "DEN", 21),   # Salt Lake City to Denver
-    ("PHX", "LVG", 14),   # Phoenix to Las Vegas
-    ("PHX", "SDG", 16),   # Phoenix to San Diego
-    ("PHX", "SFE", 27),   # Phoenix to Santa Fe
-    ("SFE", "DEN", 13),   # Santa Fe to Denver
-
-    # Red region
-    ("KSC", "STL", 12),   # Kansas City to St. Louis
-    ("KSC", "OKC", 13),   # Kansas City to Oklahoma City
-    ("OKC", "DAL", 8),    # Oklahoma City to Dallas
-    ("DAL", "HOU", 7),    # Dallas to Houston
-    ("DAL", "OKC", 13),   # Dallas to Oklahoma City
-    ("HOU", "NOA", 12),   # Houston to New Orleans
-    ("NOA", "MEM", 16),   # New Orleans to Memphis
-    ("MEM", "BHM", 14),   # Memphis to Birmingham
-
-    # Yellow region
-    ("DUL", "FRG", 16),   # Duluth to Fargo
-    ("DUL", "MIN", 10),   # Duluth to Minneapolis
-    ("MIN", "CHI", 18),   # Minneapolis to Chicago
-    ("CHI", "STL", 10),   # Chicago to St. Louis
-    ("STL", "CIN", 8),    # St. Louis to Cincinnati
-    ("CIN", "KNX", 7),    # Cincinnati to Knoxville
-
-    # Orange region
-    ("WAS", "PHI", 4),    # Washington to Philadelphia
-    ("PHI", "NYC", 6),    # Philadelphia to New York
-    ("NYC", "BUF", 8),    # New York to Buffalo
-    ("BUF", "DET", 9),    # Buffalo to Detroit
-    ("DET", "CHI", 9),    # Detroit to Chicago
-    ("BUF", "PIT", 7),    # Buffalo to Pittsburgh
-    ("PIT", "PHI", 10),   # Pittsburgh to Philadelphia
-    ("PHI", "BOS", 9),    # Philadelphia to Boston
-
-    # Green region
-    ("RAL", "NRF", 4),    # Raleigh to Norfolk
-    ("RAL", "ATL", 12),   # Raleigh to Atlanta
-    ("RAL", "SAV", 8),    # Raleigh to Savannah
-    ("SAV", "JAX", 4),    # Savannah to Jacksonville
-    ("SAV", "ATL", 7),    # Savannah to Atlanta
-    ("JAX", "TMP", 4),    # Jacksonville to Tampa
-    ("TMP", "MIA", 5),    # Tampa to Miami
+    ("SEA", "POR", 3),
+    ("SEA", "BIL", 9),
+    ("SEA", "BOI", 12),
+    ("POR", "BOI", 13),
+    ("POR", "SFO", 24),
+    ("BIL", "CHE", 9),
+    ("BIL", "BOI", 12),
+    ("BIL", "FRG", 17),
+    ("BIL", "MIN", 18),
+    ("BOI", "SFO", 23),
+    ("BOI", "SLC", 8),
+    ("BOI", "CHE", 24),
+    ("SFO", "SLC", 27),
+    ("SFO", "LVG", 14),
+    ("SFO", "LAX", 9),
+    ("CHE", "MIN", 18),
+    ("CHE", "OMA", 14),
+    ("CHE", "DEN", 0),
+    ("SLC", "LAX", 18),
+    ("SLC", "SFE", 28),
+    ("LAX", "LVG", 9),
+    ("LAX", "SDG", 3),
+    ("SDG", "LVG", 9),
+    ("SDG", "PHX", 14),
+    ("PHX", "LVG", 15),
+    ("LVG", "SFE", 27),
+    ("PHX", "SFE", 18),
+    ("FRG", "DUL", 6),
+    ("FRG", "MIN", 6),
+    ("DUL", "MIN", 5),
+    ("MIN", "OMA", 8),
+    ("KSC", "OMA", 5),
+    ("KSC", "DEN", 16),
+    ("DEN", "SFE", 13),
+    ("KSC", "SFE", 16),
+    ("OKC", "SFE", 15),
+    ("DAL", "SFE", 16),
+    ("HOU", "SFE", 21),
+    ("HOU", "DAL", 5),
+    ("DAL", "OKC", 3),
+    ("KSC", "OKC", 8),
+    ("MEM", "STL", 7),
+    ("MEM", "KSC", 12),
+    ("MEM", "OKC", 14),
+    ("MEM", "NOA", 7),
+    ("MEM", "BHM", 6),
+    ("MEM", "DAL", 12),
+    ("NOA", "DAL", 12),
+    ("HOU", "NOA", 8),
+    ("CHI", "DUL", 12),
+    ("CHI", "MIN", 8),
+    ("CHI", "OMA", 13),
+    ("CHI", "KSC", 8),
+    ("CHI", "STL", 10),
+    ("CHI", "CIN", 7),
+    ("CHI", "DET", 7),
+    ("DET", "DUL", 15),
+    ("STL", "KSC", 6),
+    ("STL", "CIN", 12),
+    ("STL", "ATA", 12),
+    ("BHM", "NOA", 11),
+    ("JAX", "NOA", 16),
+    ("DET", "BUF", 7),
+    ("DET", "PIT", 6),
+    ("DET", "CIN", 4),
+    ("PIT", "CIN", 7),
+    ("RAL", "CIN", 15),
+    ("KNX", "CIN", 6),
+    ("KNX", "ATA", 5),
+    ("MIA", "TMP", 4),
+    ("JAX", "TMP", 4),
+    ("BHM", "JAX", 9),
+    ("SAV", "JAX", 0),
+    ("SAV", "ATA", 7),
+    ("SAV", "RAL", 7),
+    ("ATA", "RAL", 7),
+    ("PIT", "RAL", 7),
+    ("PIT", "BUF", 7),
+    ("NYC", "BUF", 8),
+    ("WAS", "PIT", 6),
+    ("WAS", "PHI", 3),
+    ("WAS", "NRF", 5),
+    ("RAL", "NRF", 3),
+    ("PHI", "NYC", 0),
+    ("BOS", "NYC", 3),
 ]
+
+for code, city in cities.items():
+    MapUS.add_node(code, name=city)
+
+# Add weighted edges, bidirectional by default
+MapUS.add_weighted_edges_from(edges)
+
+"""
+# para checkar se era bidirecional, apagar dps
+print(nx.has_path(MapUS, "PIT", "RAL"))  
+print(nx.has_path(MapUS, "RAL", "PIT"))  
+"""
