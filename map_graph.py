@@ -1,8 +1,11 @@
 import networkx as nx
+import logging
+from collections import deque # for graph search
 
-MapUS = nx.Graph()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-cities = {
+citiesUS = {
     # Dark-Blue region
     "SEA": "Seattle",
     "POR": "Portland",
@@ -54,11 +57,11 @@ cities = {
     "TMP": "Tampa",
     "SAV": "Savannah",
     "JAX": "Jacksonville",
-    "ATL": "Atlanta",
+    "ATA": "Atlanta",
     "NRF": "Norfolk",
 }
 
-edges = [
+edgesUS = [
     ("SEA", "POR", 3),
     ("SEA", "BIL", 9),
     ("SEA", "BOI", 12),
@@ -135,6 +138,7 @@ edges = [
     ("SAV", "ATA", 7),
     ("SAV", "RAL", 7),
     ("ATA", "RAL", 7),
+    ("ATA", "BHM", 3),
     ("PIT", "RAL", 7),
     ("PIT", "BUF", 7),
     ("NYC", "BUF", 8),
@@ -146,14 +150,117 @@ edges = [
     ("BOS", "NYC", 3),
 ]
 
-for code, city in cities.items():
-    MapUS.add_node(code, name=city)
+class BoardMap:
+    """
+    This class stores the board data related to the map:
+    - 'cities' is sa dictionary that maps a city TAG to its name
+    - 'links' is a list of all the connections between 2 different tags
+    - 'map' is the graph variable, it stores in each node:
+        - city tag (code)
+        - current owner (owner)
+    """
+    def __init__(self, cities, links):
+        self.cities = cities
+        self.links = links
 
-# Add weighted edges, bidirectional by default
-MapUS.add_weighted_edges_from(edges)
+        self.map = nx.Graph()
 
-"""
-# para checkar se era bidirecional, apagar dps
-print(nx.has_path(MapUS, "PIT", "RAL"))  
-print(nx.has_path(MapUS, "RAL", "PIT"))  
-"""
+        # Each node is added here
+        for code, city_name in cities.items():
+            self.map.add_node(code, owner="")  # 'owner' initialized to an empty string, to be updated later
+
+        # Add edges with weights (cost A -> B)
+        self.map.add_weighted_edges_from(links)
+
+    def city_name(self, tag):
+        """
+        Returns the name of the city.
+
+        :param tag: the city 3-letter tag
+        :return: city name string
+        """
+        if tag not in self.cities:
+            logging.error(f"City with tag '{tag}' not found.")
+            return None
+
+        return self.cities[tag]
+
+    def get_owner(self, tag):
+        """
+        Returns the current owner of a given city.
+
+        :param tag: the city 3-letter tag
+        :return: current owner of that city
+        """
+        if tag in self.map.nodes:
+            return self.map.nodes[tag].get('owner', "") # returns owner else ""
+        else:
+            logging.error(f"City with tag '{tag}' not found.")
+            return None
+
+    def update_owner(self, player, tag):
+        """
+        Updates the owner of a city based on the provided city tag and player ID.
+
+        :param player: the ID of the player who will now own the city
+        :param tag: the 3-letter tag of the city
+        :return: 0 or 1 if no errors occur, or something goes wrong respectively
+        """
+        if tag in self.map.nodes:
+            self.map.nodes[tag]['owner'] = player
+            return 0
+        else:
+            logging.error("Tag not found.")
+            return 1
+
+    def available_path(self, tag):
+        """
+        Finds the available path from a given city using Breadth-First Search.
+        From the tag, looks for the current owner and checks the network for cities owned by the same player reachable by some path.
+
+        :param tag: The 3-letter tag of the city
+        :return:
+        - A tuple containing:
+          - The owner of the city
+          - The size of the path (if the land isn't owned, return 0)
+        """
+        owner = self.get_owner(tag)
+
+        if owner == "":
+            return owner, 0
+
+        # BFS, using deque for efficiency
+        visited = set()
+        queue = deque([tag])
+        path_size = 1
+
+        while queue:
+            current_city = queue.popleft()  # first element of the deque
+            if current_city not in visited:
+                visited.add(current_city) # add to visited, but only increment path_size if the city's owner is the same
+
+                # Add neighbors to the queue if they are owned by the same player
+                for neighbor in self.map.neighbors(current_city): # networkX method
+                    # print(neighbor)
+                    if self.map.nodes[neighbor]['owner'] == owner and neighbor not in visited:
+                        queue.append(neighbor)
+                        path_size += 1
+
+        return owner, path_size
+
+'''
+# test get_owner method
+game = BoardMap(citiesUS, edgesUS)
+game.update_owner('player1', 'ATA')
+print(game.get_owner('ATA'))
+'''
+
+# test the BFS
+game = BoardMap(citiesUS, edgesUS)
+game.update_owner('player1', 'ATA')
+game.update_owner('player1', 'KNX')
+game.update_owner('player1', 'SAV')
+
+
+print(game.available_path('ATA'))
+
