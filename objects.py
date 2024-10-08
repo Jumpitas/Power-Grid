@@ -7,7 +7,7 @@
 
 
 class PowerPlant:
-    def __init__(self, min_bid, cities, resource_type, resource_num=0, is_hybrid=False):
+    def __init__(self, min_bid, cities, resource_type=[], resource_num=0, is_hybrid=False):
         self.min_bid = min_bid
         self.cities = cities
         self.resource_type = resource_type
@@ -74,3 +74,64 @@ class PowerPlant:
                     elif counter == self.resource_num:
                         return True
         return False
+
+
+# Baralho de cartas originals
+
+power_plant_deck = [
+    # Coal Plants
+    PowerPlant(4,1,["coal"],2),
+    PowerPlant(8,2,["coal"],3),
+    PowerPlant(10,2,["coal"],2),
+    PowerPlant(15,3,["coal"],2),
+    PowerPlant(20,5,["coal"],3),
+    PowerPlant(25,5,["coal"],2),
+    PowerPlant(31,6,["coal"],3),
+    PowerPlant(36,7,["coal"],3),
+    PowerPlant(42,6,["coal"],2),
+
+    # Oil Plants
+    PowerPlant(3,1,["oil"],2),
+    PowerPlant(7,2,["oil"],3),
+    PowerPlant(9,1,["oil"],1),
+    PowerPlant(16,3,["oil"],2),
+    PowerPlant(26,5,["oil"],2),
+    PowerPlant(32,6,["oil"],3),
+    PowerPlant(35,5,["oil"],1),
+    PowerPlant(40,6,["oil"],2),
+
+    # Garbage Plants
+    PowerPlant(6,1,["garbage"],1),
+    PowerPlant(14,2,["garbage"],2),
+    PowerPlant(19,3,["garbage"],2),
+    PowerPlant(24,4,["garbage"],2),
+    PowerPlant(30,6,["garbage"],3),
+    PowerPlant(38,7,["garbage"],3),
+
+    # Uranium Plants
+    PowerPlant(11,2,["uranium"],1),
+    PowerPlant(17,2,["uranium"],1),
+    PowerPlant(23,3,["uranium"],1),
+    PowerPlant(28,4,["uranium"],1),
+    PowerPlant(34,5,["uranium"],1),
+    PowerPlant(39,6,["uranium"],1),
+
+    # Hybrid Plants
+    PowerPlant(5,1,["coal","oil"],2,True),
+    PowerPlant(12,2,["coal","oil"],2,True),
+    PowerPlant(21,4,["coal","oil"],2,True),
+    PowerPlant(29,4,["coal","oil"],1,True),
+    PowerPlant(46,7,["coal","oil"],3,True),
+
+    # Eco Plants
+    PowerPlant(13,1),
+    PowerPlant(18,2),
+    PowerPlant(22,2),
+    PowerPlant(27,3),
+    PowerPlant(33,4),
+    PowerPlant(37,4),
+    PowerPlant(44,5),
+    
+    # Fusion Plant
+    PowerPlant(50,6)
+]
