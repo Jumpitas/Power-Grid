@@ -223,30 +223,66 @@ class BoardMap:
         - A tuple containing:
           - The owner of the city
           - The size of the path (if the land isn't owned, return 0)
+          - A list of the nodes visited (whose owner is the one who owns the tag on the call). Useful to keep track for better performance.
         """
         owner = self.get_owner(tag)
 
         if owner == "":
-            return owner, 0
+            return owner, 0, [tag]
 
         # BFS, using deque for efficiency
-        visited = set()
+        visited_set = set()
         queue = deque([tag])
         path_size = 1
 
+        visited_in_this_iteration = [tag]
         while queue:
             current_city = queue.popleft()  # first element of the deque
-            if current_city not in visited:
-                visited.add(current_city) # add to visited, but only increment path_size if the city's owner is the same
+            if current_city not in visited_set:
+                visited_set.add(current_city) # add to visited, but only increment path_size if the city's owner is the same
 
                 # Add neighbors to the queue if they are owned by the same player
                 for neighbor in self.map.neighbors(current_city): # networkX method
                     # print(neighbor)
-                    if self.map.nodes[neighbor]['owner'] == owner and neighbor not in visited:
+                    if self.map.nodes[neighbor]['owner'] == owner and neighbor not in visited_set:
                         queue.append(neighbor)
+                        visited_in_this_iteration.append(neighbor)
                         path_size += 1
 
-        return owner, path_size
+        return owner, path_size, visited_in_this_iteration
+
+    def has_ended(self, r):
+        """
+        A method helpful to determine if the game ended, returning who won if and only if it finds a connected subgraph with (at least) r nodes, all belonging to the same person.
+        :param r: the required path size to end, since it varies with the amount of players selected
+        :return:
+        - A tuple containing:
+          - If the game has ended (True or False)
+          - The winner (empty string if no one won)
+        """
+        highest_path_size = -1
+        highest_path_owner = ""
+
+        visited = dict.fromkeys(self.cities.keys(), False)
+
+        for k in visited.keys():
+            if not visited[k]: # If that city has not been searched
+                o, size, l = self.available_path(k)
+                if size > highest_path_size:
+                    highest_path_size = size
+                    highest_path_owner = o
+                for x in l:
+                    visited[x] = True
+
+        if highest_path_size == -1:
+            logging.error("Either the game didn't start or something went wrong.")
+            return False, ""
+        else:
+            if highest_path_size >= r:
+                 return True, highest_path_owner
+            else:
+                return False, "" # someone might not win
+
 
 '''
 # test get_owner method
@@ -263,4 +299,4 @@ game.update_owner('player1', 'SAV')
 
 
 print(game.available_path('ATA'))
-
+print(game.has_ended(4))
