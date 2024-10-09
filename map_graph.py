@@ -167,7 +167,7 @@ class BoardMap:
 
         # Each node is added here
         for code, city_name in cities.items():
-            self.map.add_node(code, owner="")  # 'owner' initialized to an empty string, to be updated later
+            self.map.add_node(code, owners= [])  # 'owners' initialized an empty list
 
         # Add edges with weights (cost A -> B)
         self.map.add_weighted_edges_from(links)
@@ -193,7 +193,7 @@ class BoardMap:
         :return: current owner of that city
         """
         if tag in self.map.nodes:
-            return self.map.nodes[tag].get('owner', "") # returns owner else ""
+            return self.map.nodes[tag].get('owners', [])
         else:
             logging.error(f"City with tag '{tag}' not found.")
             return None
@@ -207,11 +207,37 @@ class BoardMap:
         :return: 0 or 1 if no errors occur, or something goes wrong respectively
         """
         if tag in self.map.nodes:
-            self.map.nodes[tag]['owner'] = player
-            return 0
+            owners = self.map.nodes[tag].get('owners', [])
+            max_occupancy = self.get_max_occupancy()
+            if len(owners) < max_occupancy:
+                owners.append(player)
+                self.map.nodes[tag]['owners'] = owners
+                return 0
+            else:
+                logging.error("City has reached maximum occupancy.")
+                return 1
         else:
             logging.error("Tag not found.")
             return 1
+
+    def get_max_occupancy(self):
+        if self.step == 1:
+            return 1
+        elif self.step == 2:
+            return 2
+        else:
+            return 3
+
+    def get_status(self):
+        """
+        Returns the current status of the map, including city ownership.
+
+        :return: A dictionary with city tags as keys and lists of owners as values
+        """
+        status = {}
+        for city in self.map.nodes:
+            status[city] = self.get_owner(city)
+        return status
 
     def available_path(self, tag):
         """
@@ -251,38 +277,28 @@ class BoardMap:
 
         return owner, path_size, visited_in_this_iteration
 
-    def has_ended(self, r):
-        """
-        A method helpful to determine if the game ended, returning who won if and only if it finds a connected subgraph with (at least) r nodes, all belonging to the same person.
-        :param r: the required path size to end, since it varies with the amount of players selected
-        :return:
-        - A tuple containing:
-          - If the game has ended (True or False)
-          - The winner (empty string if no one won)
-        """
-        highest_path_size = -1
-        highest_path_owner = ""
+    def has_ended(self, required_cities):
+        for player in self.get_all_players():
+            player_city_count = self.count_player_cities(player)
+            if player_city_count >= required_cities:
+                return True, player
+        return False, ""
 
-        visited = dict.fromkeys(self.cities.keys(), False)
+    def count_player_cities(self, player):
+        count = 0
+        for city in self.map.nodes:
+            owners = self.get_owner(city)
+            if player in owners:
+                count += 1
+        return count
 
-        for k in visited.keys():
-            if not visited[k]: # If that city has not been searched
-                o, size, l = self.available_path(k)
-                if size > highest_path_size:
-                    highest_path_size = size
-                    highest_path_owner = o
-                for x in l:
-                    visited[x] = True
-
-        if highest_path_size == -1:
-            logging.error("Either the game didn't start or something went wrong.")
-            return False, ""
-        else:
-            if highest_path_size >= r:
-                 return True, highest_path_owner
-            else:
-                return False, "" # someone might not win
-
+    def get_all_players(self):
+        players = set()
+        for city in self.map.nodes:
+            owners = self.get_owner(city)
+            players.update(owners)
+        return list(players)
+ç
 
 '''
 # test get_owner method
