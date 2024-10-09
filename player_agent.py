@@ -159,4 +159,21 @@ class ReceivePhaseBehaviour(CyclicBehaviour):
 
     def consume_resources(self, num_cities_powered):
         pass
+    def get_power_capacity(self, plant_number):
+        pass
+class PowerGridPlayerAgent(Agent):
+    def __init__(self, jid, password, player_id):
+        super().__init__(jid, password)
+        self.player_id = player_id
+        self.houses = []  # List of city tags where the player has houses
+        self.power_plants = []  # List of power plant numbers
+        self.resources = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+        self.elektro = 50  # Starting money
+        self.connected_cities = 0
+        self.power_plant_market = []  # Latest power plant market info
+        self.step = 1  # Current game step
 
+    async def setup(self):
+        print(f"Player {self.player_id} agent starting...")
+        receive_phase_behaviour = ReceivePhaseBehaviour()
+        self.add_behaviour(receive_phase_behaviour)

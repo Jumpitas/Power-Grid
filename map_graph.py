@@ -270,7 +270,7 @@ class BoardMap:
                 # Add neighbors to the queue if they are owned by the same player
                 for neighbor in self.map.neighbors(current_city): # networkX method
                     # print(neighbor)
-                    if self.map.nodes[neighbor]['owner'] == owner and neighbor not in visited_set:
+                    if self.map.nodes[neighbor]['owners'] == owner and neighbor not in visited_set:
                         queue.append(neighbor)
                         path_size += 1
 
