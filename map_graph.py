@@ -153,6 +153,7 @@ edgesUS = [
 class BoardMap:
     """
     This class stores the board data related to the map:
+
     - 'cities' is sa dictionary that maps a city TAG to its name
     - 'links' is a list of all the connections between 2 different tags
     - 'map' is the graph variable, it stores in each node:
@@ -162,6 +163,7 @@ class BoardMap:
     def __init__(self, cities, links):
         self.cities = cities
         self.links = links
+        self.step = 1 # varies with the game phases
 
         self.map = nx.Graph()
 
@@ -244,24 +246,22 @@ class BoardMap:
         Finds the available path from a given city using Breadth-First Search.
         From the tag, looks for the current owner and checks the network for cities owned by the same player reachable by some path.
 
-        :param tag: The 3-letter tag of the city
+        :param tag: The 3-letter tag of the city.
         :return:
         - A tuple containing:
-          - The owner of the city
-          - The size of the path (if the land isn't owned, return 0)
-          - A list of the nodes visited (whose owner is the one who owns the tag on the call). Useful to keep track for better performance.
+          - The owner of the city;
+          - The size of the path (if the land isn't owned, return 0).
         """
         owner = self.get_owner(tag)
 
         if owner == "":
-            return owner, 0, [tag]
+            return owner, 0
 
         # BFS, using deque for efficiency
         visited_set = set()
         queue = deque([tag])
         path_size = 1
 
-        visited_in_this_iteration = [tag]
         while queue:
             current_city = queue.popleft()  # first element of the deque
             if current_city not in visited_set:
@@ -272,12 +272,21 @@ class BoardMap:
                     # print(neighbor)
                     if self.map.nodes[neighbor]['owner'] == owner and neighbor not in visited_set:
                         queue.append(neighbor)
-                        visited_in_this_iteration.append(neighbor)
                         path_size += 1
 
-        return owner, path_size, visited_in_this_iteration
+        return owner, path_size
 
     def has_ended(self, required_cities):
+        """
+        Checks if the game has ended.
+
+        :param required_cities: The number of cities required for the game to end, varies with the amount of players.
+        :return:
+        - A tuple containing:
+          - Boolean indicating if the game ended or not;
+          - The player who won (if none, returns an empty string).
+
+        """
         for player in self.get_all_players():
             player_city_count = self.count_player_cities(player)
             if player_city_count >= required_cities:
@@ -285,6 +294,11 @@ class BoardMap:
         return False, ""
 
     def count_player_cities(self, player):
+        """
+        Returns the number of cities owned by a given player.
+        :param player: The player name.
+        :return: The count of those cities.
+        """
         count = 0
         for city in self.map.nodes:
             owners = self.get_owner(city)
@@ -293,12 +307,15 @@ class BoardMap:
         return count
 
     def get_all_players(self):
+        """
+        :return: Returns a list of all players.
+        """
         players = set()
         for city in self.map.nodes:
             owners = self.get_owner(city)
             players.update(owners)
         return list(players)
-ç
+
 
 '''
 # test get_owner method
