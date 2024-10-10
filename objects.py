@@ -7,13 +7,14 @@
 
 
 class PowerPlant:
-    def __init__(self, min_bid, cities, resource_type=[], resource_num=0, is_hybrid=False):
+    def __init__(self, min_bid, cities, resource_type=[], resource_num=0, is_hybrid=False, is_step=False):
         self.min_bid = min_bid
         self.cities = cities
         self.resource_type = resource_type
         self.storage = {item: 0 for item in self.resource_type}
         self.resource_num = resource_num
         self.is_hybrid = is_hybrid
+        self.is_step = is_step
         self.available_storage = resource_num*2
 
     def store_resources(self, rtype, rnum):
@@ -133,5 +134,8 @@ power_plant_deck = [
     PowerPlant(44,5),
     
     # Fusion Plant
-    PowerPlant(50,6)
+    PowerPlant(50,6),
+
+    # Step3 Card
+    PowerPlant(99,99,is_step=True)
 ]
