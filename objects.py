@@ -1,20 +1,16 @@
-# Notas:
-# - resource_type é deve sempre ser lista que guarda tipos de recursos que podem ser utilizados
-# - resource_num é o número total de recursos que precisam de ser consumidos para ligar
-# é assumido como 0 porque para as eólicas a max_storage tem de ser automaticamente 0
-# - hybrid são as que usam mais do que 1 resource
-# - restrições são colocadas aos agentes na parte de possible moves
-
+# objects.py
 
 class PowerPlant:
-    def __init__(self, min_bid, cities, resource_type=[], resource_num=0, is_hybrid=False):
+    def __init__(self, min_bid, cities=None, resource_type=[], resource_num=0, is_hybrid=False, capacity=None, name=None):
         self.min_bid = min_bid
-        self.cities = cities
+        self.cities = cities if cities is not None else capacity
         self.resource_type = resource_type
         self.storage = {item: 0 for item in self.resource_type}
         self.resource_num = resource_num
         self.is_hybrid = is_hybrid
-        self.available_storage = resource_num*2
+        self.available_storage = resource_num * 2
+        self.capacity = capacity if capacity is not None else self.cities
+        self.name = name
 
     def store_resources(self, rtype, rnum):
         if rtype not in self.resource_type:
@@ -27,111 +23,117 @@ class PowerPlant:
         self.storage[rtype] += rnum
         self.available_storage -= rnum
 
-    def order_resources(self, plant2, rtype): # de self para plant2
+    def to_dict(self):
+        return {
+            'min_bid': self.min_bid,
+            'resource_type': self.resource_type,
+            'resource_num': self.resource_num,
+            'capacity': self.capacity,
+            'is_hybrid': self.is_hybrid,
+            'name': self.name
+        }
+
+    def order_resources(self, plant2, rtype):  # from self to plant2
         self.storage[rtype] -= 1
         self.available_storage += 1
         plant2.storage[rtype] += 1
         plant2.available_storage -= 1
 
-    # Nota: os resources usados voltam para o market!!!
-    # power_on deve também dar return de replenish_market para 
-    # repor o mercado corretamente
+    # Note: resources used are returned to the market!!!
+    # power_on should also return replenish_market to
+    # replenish the market correctly
 
     def power_on(self):
-        # se o nº de resources in storage for igual ao necessário
-        # para ligar power então é automático
-        if (sum(self.storage.values()) == self.resource_num):
-            replenish_market = self.storage
-            self.storage = {key: 0 for key in self.storage}
-            self.available_storage += self.resource_num
-            return True
+        if sum(self.storage.values()) < self.resource_num:
+            return False  # Not enough resources
 
-        # se for maior que o necessário e não híbrido
-        # (não engloba menor que necessário porque se é menor não pode ligar)
-        elif not self.is_hybrid:
-            replenish_market = {self.resource_type[0]: self.resource_num}
-            self.storage[self.resource_type[0]] -= self.resource_num
-            self.available_storage += self.resource_num
-            return True
+        if not self.is_hybrid:
+            resource = self.resource_type[0]
+            if self.storage[resource] >= self.resource_num:
+                self.storage[resource] -= self.resource_num
+                self.available_storage += self.resource_num
+                return True
+            else:
+                return False  # Not enough resources of the required type
 
-
-        # caso contrário, tem de ser capaz de escolher
-        # a combinação de recursos que quer utilizar
-        # enquanto não escolher suficientes, faz um ciclo
         else:
-            replenish_market = {key: 0 for key in self.storage}
-            counter = 0
-            while counter < self.resource_num:
-                for rtype in self.resource_type:
-                    choice = int(input(f"How many of type {rtype} do you wish to consume? "))
-                    replenish_market[rtype] += choice
-                    self.storage[rtype] -= choice
-                    counter += choice
+            # Hybrid plant: choose resources to consume
+            consumed = {}
+            remaining_needed = self.resource_num
+            for resource in self.resource_type:
+                available = self.storage.get(resource, 0)
+                to_consume = min(available, remaining_needed)
+                consumed[resource] = to_consume
+                remaining_needed -= to_consume
+                if remaining_needed == 0:
+                    break
 
-                    if counter > self.resource_num: 
-                        print("Error: Consumed more resources than needed!!! ")
-                    
-                    elif counter == self.resource_num:
-                        return True
-        return False
+            if remaining_needed > 0:
+                return False  # Not enough resources
+
+            # Consume the resources
+            for resource, amount in consumed.items():
+                self.storage[resource] -= amount
+                self.available_storage += amount
+
+            return True
 
 
-# Baralho de cartas originals
-
+# Initialize the deck of power plants
 power_plant_deck = [
     # Coal Plants
-    PowerPlant(4,1,["coal"],2),
-    PowerPlant(8,2,["coal"],3),
-    PowerPlant(10,2,["coal"],2),
-    PowerPlant(15,3,["coal"],2),
-    PowerPlant(20,5,["coal"],3),
-    PowerPlant(25,5,["coal"],2),
-    PowerPlant(31,6,["coal"],3),
-    PowerPlant(36,7,["coal"],3),
-    PowerPlant(42,6,["coal"],2),
+    PowerPlant(min_bid=4, cities=1, resource_type=["coal"], resource_num=2),
+    PowerPlant(min_bid=8, cities=2, resource_type=["coal"], resource_num=3),
+    PowerPlant(min_bid=10, cities=2, resource_type=["coal"], resource_num=2),
+    PowerPlant(min_bid=15, cities=3, resource_type=["coal"], resource_num=2),
+    PowerPlant(min_bid=20, cities=5, resource_type=["coal"], resource_num=3),
+    PowerPlant(min_bid=25, cities=5, resource_type=["coal"], resource_num=2),
+    PowerPlant(min_bid=31, cities=6, resource_type=["coal"], resource_num=3),
+    PowerPlant(min_bid=36, cities=7, resource_type=["coal"], resource_num=3),
+    PowerPlant(min_bid=42, cities=6, resource_type=["coal"], resource_num=2),
 
     # Oil Plants
-    PowerPlant(3,1,["oil"],2),
-    PowerPlant(7,2,["oil"],3),
-    PowerPlant(9,1,["oil"],1),
-    PowerPlant(16,3,["oil"],2),
-    PowerPlant(26,5,["oil"],2),
-    PowerPlant(32,6,["oil"],3),
-    PowerPlant(35,5,["oil"],1),
-    PowerPlant(40,6,["oil"],2),
+    PowerPlant(min_bid=3, cities=1, resource_type=["oil"], resource_num=2),
+    PowerPlant(min_bid=7, cities=2, resource_type=["oil"], resource_num=3),
+    PowerPlant(min_bid=9, cities=1, resource_type=["oil"], resource_num=1),
+    PowerPlant(min_bid=16, cities=3, resource_type=["oil"], resource_num=2),
+    PowerPlant(min_bid=26, cities=5, resource_type=["oil"], resource_num=2),
+    PowerPlant(min_bid=32, cities=6, resource_type=["oil"], resource_num=3),
+    PowerPlant(min_bid=35, cities=5, resource_type=["oil"], resource_num=1),
+    PowerPlant(min_bid=40, cities=6, resource_type=["oil"], resource_num=2),
 
     # Garbage Plants
-    PowerPlant(6,1,["garbage"],1),
-    PowerPlant(14,2,["garbage"],2),
-    PowerPlant(19,3,["garbage"],2),
-    PowerPlant(24,4,["garbage"],2),
-    PowerPlant(30,6,["garbage"],3),
-    PowerPlant(38,7,["garbage"],3),
+    PowerPlant(min_bid=6, cities=1, resource_type=["garbage"], resource_num=1),
+    PowerPlant(min_bid=14, cities=2, resource_type=["garbage"], resource_num=2),
+    PowerPlant(min_bid=19, cities=3, resource_type=["garbage"], resource_num=2),
+    PowerPlant(min_bid=24, cities=4, resource_type=["garbage"], resource_num=2),
+    PowerPlant(min_bid=30, cities=6, resource_type=["garbage"], resource_num=3),
+    PowerPlant(min_bid=38, cities=7, resource_type=["garbage"], resource_num=3),
 
     # Uranium Plants
-    PowerPlant(11,2,["uranium"],1),
-    PowerPlant(17,2,["uranium"],1),
-    PowerPlant(23,3,["uranium"],1),
-    PowerPlant(28,4,["uranium"],1),
-    PowerPlant(34,5,["uranium"],1),
-    PowerPlant(39,6,["uranium"],1),
+    PowerPlant(min_bid=11, cities=2, resource_type=["uranium"], resource_num=1),
+    PowerPlant(min_bid=17, cities=2, resource_type=["uranium"], resource_num=1),
+    PowerPlant(min_bid=23, cities=3, resource_type=["uranium"], resource_num=1),
+    PowerPlant(min_bid=28, cities=4, resource_type=["uranium"], resource_num=1),
+    PowerPlant(min_bid=34, cities=5, resource_type=["uranium"], resource_num=1),
+    PowerPlant(min_bid=39, cities=6, resource_type=["uranium"], resource_num=1),
 
     # Hybrid Plants
-    PowerPlant(5,1,["coal","oil"],2,True),
-    PowerPlant(12,2,["coal","oil"],2,True),
-    PowerPlant(21,4,["coal","oil"],2,True),
-    PowerPlant(29,4,["coal","oil"],1,True),
-    PowerPlant(46,7,["coal","oil"],3,True),
+    PowerPlant(min_bid=5, cities=1, resource_type=["coal", "oil"], resource_num=2, is_hybrid=True),
+    PowerPlant(min_bid=12, cities=2, resource_type=["coal", "oil"], resource_num=2, is_hybrid=True),
+    PowerPlant(min_bid=21, cities=4, resource_type=["coal", "oil"], resource_num=2, is_hybrid=True),
+    PowerPlant(min_bid=29, cities=4, resource_type=["coal", "oil"], resource_num=1, is_hybrid=True),
+    PowerPlant(min_bid=46, cities=7, resource_type=["coal", "oil"], resource_num=3, is_hybrid=True),
 
     # Eco Plants
-    PowerPlant(13,1),
-    PowerPlant(18,2),
-    PowerPlant(22,2),
-    PowerPlant(27,3),
-    PowerPlant(33,4),
-    PowerPlant(37,4),
-    PowerPlant(44,5),
-    
+    PowerPlant(min_bid=13, cities=1),
+    PowerPlant(min_bid=18, cities=2),
+    PowerPlant(min_bid=22, cities=2),
+    PowerPlant(min_bid=27, cities=3),
+    PowerPlant(min_bid=33, cities=4),
+    PowerPlant(min_bid=37, cities=4),
+    PowerPlant(min_bid=44, cities=5),
+
     # Fusion Plant
-    PowerPlant(50,6)
+    PowerPlant(min_bid=50, cities=6)
 ]

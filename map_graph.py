@@ -1,6 +1,8 @@
+# map_graph.py
+
 import networkx as nx
 import logging
-from collections import deque # for graph search
+from collections import deque
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -154,22 +156,20 @@ class BoardMap:
     """
     This class stores the board data related to the map:
 
-    - 'cities' is sa dictionary that maps a city TAG to its name
+    - 'cities' is a dictionary that maps a city TAG to its name
     - 'links' is a list of all the connections between 2 different tags
-    - 'map' is the graph variable, it stores in each node:
-        - city tag (code)
-        - current owner (owner)
+    - 'map' is the NetworkX graph object, storing each node's owners
     """
     def __init__(self, cities, links):
         self.cities = cities
         self.links = links
-        self.step = 1 # varies with the game phases
+        self.step = 1  # varies with the game phases
 
         self.map = nx.Graph()
 
         # Each node is added here
         for code, city_name in cities.items():
-            self.map.add_node(code, owners= [])  # 'owners' initialized an empty list
+            self.map.add_node(code, owners=[])  # 'owners' initialized as an empty list
 
         # Add edges with weights (cost A -> B)
         self.map.add_weighted_edges_from(links)
@@ -189,16 +189,16 @@ class BoardMap:
 
     def get_owner(self, tag):
         """
-        Returns the current owner of a given city.
+        Returns the current owners of a given city.
 
         :param tag: the city 3-letter tag
-        :return: current owner of that city
+        :return: list of current owners of that city
         """
         if tag in self.map.nodes:
             return self.map.nodes[tag].get('owners', [])
         else:
             logging.error(f"City with tag '{tag}' not found.")
-            return None
+            return []
 
     def update_owner(self, player, tag):
         """
@@ -206,7 +206,7 @@ class BoardMap:
 
         :param player: the ID of the player who will now own the city
         :param tag: the 3-letter tag of the city
-        :return: 0 or 1 if no errors occur, or something goes wrong respectively
+        :return: 0 if successful, 1 otherwise
         """
         if tag in self.map.nodes:
             owners = self.map.nodes[tag].get('owners', [])
@@ -252,25 +252,25 @@ class BoardMap:
           - The owner of the city;
           - The size of the path (if the land isn't owned, return 0).
         """
-        owner = self.get_owner(tag)
+        owners = self.get_owner(tag)
 
-        if owner == "":
-            return owner, 0
+        if not owners:
+            return None, 0
 
+        owner = owners[0]  # Assuming single ownership for simplicity
         # BFS, using deque for efficiency
         visited_set = set()
         queue = deque([tag])
         path_size = 1
 
         while queue:
-            current_city = queue.popleft()  # first element of the deque
+            current_city = queue.popleft()
             if current_city not in visited_set:
-                visited_set.add(current_city) # add to visited, but only increment path_size if the city's owner is the same
+                visited_set.add(current_city)
 
                 # Add neighbors to the queue if they are owned by the same player
-                for neighbor in self.map.neighbors(current_city): # networkX method
-                    # print(neighbor)
-                    if self.map.nodes[neighbor]['owners'] == owner and neighbor not in visited_set:
+                for neighbor in self.map.neighbors(current_city):
+                    if self.map.nodes[neighbor]['owners'] and self.map.nodes[neighbor]['owners'][0] == owner and neighbor not in visited_set:
                         queue.append(neighbor)
                         path_size += 1
 
@@ -280,12 +280,11 @@ class BoardMap:
         """
         Checks if the game has ended.
 
-        :param required_cities: The number of cities required for the game to end, varies with the amount of players.
+        :param required_cities: The number of cities required for the game to end, varies with the number of players.
         :return:
         - A tuple containing:
           - Boolean indicating if the game ended or not;
           - The player who won (if none, returns an empty string).
-
         """
         for player in self.get_all_players():
             player_city_count = self.count_player_cities(player)
@@ -296,6 +295,7 @@ class BoardMap:
     def count_player_cities(self, player):
         """
         Returns the number of cities owned by a given player.
+
         :param player: The player name.
         :return: The count of those cities.
         """
@@ -316,20 +316,63 @@ class BoardMap:
             players.update(owners)
         return list(players)
 
+    def to_dict(self):
+        """
+        Serializes the map data into a dictionary format suitable for JSON serialization.
+        Includes connections and ownership.
 
-'''
-# test get_owner method
-game = BoardMap(citiesUS, edgesUS)
-game.update_owner('player1', 'ATA')
-print(game.get_owner('ATA'))
-'''
+        :return: Dictionary representing the map.
+        """
+        map_dict = {}
+        for city in self.map.nodes:
+            map_dict[city] = {
+                'connections': dict(self.map[city]),
+                'owners': self.get_owner(city)
+            }
+        return map_dict
 
-# test the BFS
-game = BoardMap(citiesUS, edgesUS)
-game.update_owner('player1', 'ATA')
-game.update_owner('player1', 'KNX')
-game.update_owner('player1', 'SAV')
+    def is_connected(self, player_houses, new_city):
+        """
+        Checks if the new_city is connected to any of the player's existing houses.
 
+        :param player_houses: List of city tags where the player has built houses.
+        :param new_city: The city tag the player wants to build a house in.
+        :return: True if connected, False otherwise.
+        """
+        # Perform BFS from the new_city to see if it reaches any of the player's houses
+        owners = self.get_owner(new_city)
+        if not owners:
+            # If no one owns the new city yet, it's connectable if any adjacent city is owned by the player
+            for neighbor in self.map.neighbors(new_city):
+                if self.map.nodes[neighbor]['owners'] and self.map.nodes[neighbor]['owners'][0] in player_houses:
+                    return True
+            return False
 
-print(game.available_path('ATA'))
-print(game.has_ended(4))
+        owner = owners[0]
+        # Check if the new_city is already connected to player's network
+        return owner in [self.get_owner(city)[0] for city in player_houses]
+
+    def find_cheapest_route(self, player_houses, new_city):
+        """
+        Finds the cheapest route from player's existing houses to the new_city.
+
+        :param player_houses: List of city tags where the player has built houses.
+        :param new_city: The city tag the player wants to build a house in.
+        :return: Tuple of (path list, total_cost) or (None, 0) if no path exists.
+        """
+        min_cost = float('inf')
+        best_path = None
+        for house in player_houses:
+            try:
+                path = nx.shortest_path(self.map, source=house, target=new_city, weight='weight')
+                cost = sum(self.map[u][v]['weight'] for u, v in zip(path[:-1], path[1:]))
+                if cost < min_cost:
+                    min_cost = cost
+                    best_path = path
+            except nx.NetworkXNoPath:
+                continue
+
+        if best_path:
+            return best_path, min_cost
+        else:
+            return None, 0
