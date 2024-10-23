@@ -76,6 +76,123 @@ class PowerPlant:
                 self.storage[resource] -= amount
                 self.available_storage += amount
 
+<<<<<<< Updated upstream
+=======
+# Baralho de cartas original
+
+power_plant_socket = [
+    # Coal Plants
+    PowerPlant(20,5,["coal"],3),
+    PowerPlant(25,5,["coal"],2),
+    PowerPlant(31,6,["coal"],3),
+    PowerPlant(36,7,["coal"],3),
+    PowerPlant(42,6,["coal"],2),
+
+    # Oil Plants
+    PowerPlant(16,3,["oil"],2),
+    PowerPlant(26,5,["oil"],2),
+    PowerPlant(32,6,["oil"],3),
+    PowerPlant(35,5,["oil"],1),
+    PowerPlant(40,6,["oil"],2),
+
+    # Garbage Plants
+    PowerPlant(19,3,["garbage"],2),
+    PowerPlant(24,4,["garbage"],2),
+    PowerPlant(30,6,["garbage"],3),
+    PowerPlant(38,7,["garbage"],3),
+
+    # Uranium Plants
+    PowerPlant(17,2,["uranium"],1),
+    PowerPlant(23,3,["uranium"],1),
+    PowerPlant(28,4,["uranium"],1),
+    PowerPlant(34,5,["uranium"],1),
+    PowerPlant(39,6,["uranium"],1),
+
+    # Hybrid Plants
+    PowerPlant(21,4,["coal","oil"],2,True),
+    PowerPlant(29,4,["coal","oil"],1,True),
+    PowerPlant(46,7,["coal","oil"],3,True),
+
+    # Eco Plants
+    PowerPlant(18,2),
+    PowerPlant(22,2),
+    PowerPlant(27,3),
+    PowerPlant(33,4),
+    PowerPlant(37,4),
+    PowerPlant(44,5),
+    
+    # Fusion Plant
+    PowerPlant(50,6),
+
+    # Step3 Card
+    PowerPlant(99,99,is_step=True)
+]
+
+power_plant_plug = [
+    # Coal Plants
+    PowerPlant(4,1,["coal"],2),
+    PowerPlant(8,2,["coal"],3),
+    PowerPlant(10,2,["coal"],2),
+    PowerPlant(15,3,["coal"],2),
+
+    # Oil Plants
+    PowerPlant(3,1,["oil"],2),
+    PowerPlant(7,2,["oil"],3),
+    PowerPlant(9,1,["oil"],1),
+
+    # Garbage Plants
+    PowerPlant(6,1,["garbage"],1),
+    PowerPlant(14,2,["garbage"],2),
+
+    # Uranium Plants
+    PowerPlant(11,2,["uranium"],1),
+
+    # Hybrid Plants
+    PowerPlant(5,1,["coal","oil"],2,True),
+    PowerPlant(12,2,["coal","oil"],2,True),
+
+    # Eco Plants
+    PowerPlant(13,1)
+]
+
+
+# Resources só são repostas se houver suficientes no "Resource Bank"
+# resource bank representa o número de peças de madeira disponíveis
+# só é possível repôr o market se existirem peças suficientes
+
+from rule_tables import price_table, resource_replenishment, remove_cards
+
+resource_bank = {
+    "coal": 24,
+    "oil": 24,
+    "garbage": 24,
+    "uranium": 12
+}
+
+
+class ResourceMarket:
+    def __init__(self, coal, oil, garbage, uranium):
+        self.max = {"coal": 24,"oil": 24,
+                    "garbage": 24,"uranium": 12} 
+        # quantidades atuais de recursos no mercado
+        self.in_market = {"coal":coal, "oil":oil,
+                          "garbage":garbage, "uranium":uranium}
+
+    def resource_price(self, rtype):
+        # Se não houver disponível
+        if self.in_market[rtype]==0: return None
+
+        if rtype == "uranium": return price_table[rtype][self.in_market["uranium"]]
+        else: 
+            for key, price in price_table[rtype].items():
+                if self.in_market[str(rtype)] in key:
+                    return price
+                
+    # restrição de agente: só compra se tiver dinheiro e puder guardar
+    def purchase_batch(self, rtype, rnum):
+        if self.in_market[rtype] >= rnum:
+            self.in_market[rtype] -= rnum
+>>>>>>> Stashed changes
             return True
 
 
