@@ -25,6 +25,10 @@ class GameManagerAgent(CyclicBehaviour):
                 await self.phase2()
             elif self.current_phase == "phase3":
                 await self.phase3()
+            elif self.current_phase == "phase4":
+                await self.phase4()
+            elif self.current_phase == "phase5":
+                await self.phase5()
             else:
                 pass
                 # placeholder pq nao me lembro se ha mais
@@ -37,13 +41,16 @@ class GameManagerAgent(CyclicBehaviour):
             await player.setup() # se for preciso comecar a 0
         self.current_phase = "action"
 
+    # Cyclic phase behaviour
+    # in order: player order, auction, resources, build houses, produce electricity
+
     async def phase1(self):
         for player in self.players:
             action = await player.decide_action(self.map)  # Assume Player has a decide_action method
             await self.execute_action(player, action)
         self.current_phase = "phase2"
 
-    async def phase1(self):
+    async def phase2(self):
         for player in self.players:
             pass
         self.current_phase = "phase3"
@@ -52,7 +59,21 @@ class GameManagerAgent(CyclicBehaviour):
         for player in self.players:
             # action = await player.decide_action(self.map)  # Assume Player has a decide_action method
             # await self.execute_action(player, action)
+        self.current_phase = "phase4"
+
+    async def phase4(self):
+        for player in self.players:
+            # action = await player.decide_action(self.map)  # Assume Player has a decide_action method
+            # await self.execute_action(player, action)
+        self.current_phase = "phase5"
+
+    async def phase5(self):
+        for player in self.players:
+            # action = await player.decide_action(self.map)  # Assume Player has a decide_action method
+            # await self.execute_action(player, action)
         self.current_phase = "phase1"
+
+    # Phases are cyclic, steps aren't!
 
     '''
     async def resolve_player_actions(self, player):
