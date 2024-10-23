@@ -34,6 +34,7 @@ class GameManagerAgent(CyclicBehaviour):
                 # placeholder pq nao me lembro se ha mais
             await asyncio.sleep(1)  # Adjust timing as needed
 
+
     async def setup_phase(self):
         # a questao e ver se estas coisas ficam no main ou aq, eu acho que o main devia ser este
         # logic for the setup phase, ver os jogadores e assim, pode ser preciso
