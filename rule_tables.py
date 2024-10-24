@@ -1,11 +1,11 @@
 # rule_tables.py
 
 # Income table: Elektro earned based on the number of cities powered
-city_cashback=[10,22,33,44,54,
-               64,73,82,90,98,
-               105,112,118,124,
-               129,134,138,142,
-               145,148,150]
+city_cashback = [10, 22, 33, 44, 54,
+                 64, 73, 82, 90, 98,
+                 105, 112, 118, 124,
+                 129, 134, 138, 142,
+                 145, 148, 150]
 
 # Resource replenishment table: Resources added to the market at the end of each turn
 # Step: {Number of Players: {Resource: Amount}}
@@ -33,21 +33,20 @@ resource_replenishment = {
     }
 }
 
-
 price_table = {
-    "uranium": {1:16, 2:14, 3:12, 4:10, 
-                  5:8, 6:7, 7:6, 8:5, 
-                  9:4, 10:3, 11:2, 12:1},
-    
-    ("coal","oil","garbage"): {
-        (1,2,3): 8,
-        (4,5,6): 7,
-        (7,8,9): 6,
-        (10,11,12): 5,
-        (13,14,15): 4,
-        (16,17,18): 3,
-        (19,20,21): 2,
-        (22,23,24): 1
+    "uranium": {1: 16, 2: 14, 3: 12, 4: 10,
+                5: 8, 6: 7, 7: 6, 8: 5,
+                9: 4, 10: 3, 11: 2, 12: 1},
+
+    ("coal", "oil", "garbage"): {
+        (1, 2, 3): 8,
+        (4, 5, 6): 7,
+        (7, 8, 9): 6,
+        (10, 11, 12): 5,
+        (13, 14, 15): 4,
+        (16, 17, 18): 3,
+        (19, 20, 21): 2,
+        (22, 23, 24): 1
     }
 }
 
@@ -69,7 +68,6 @@ game_end_cities = {
     6: 14
 }
 
-
 # Building cost table: Cost to build a house based on the current step
 building_cost = {
     1: 10,  # Step 1
@@ -77,16 +75,17 @@ building_cost = {
     3: 20  # Step 3
 }
 
-
 remove_cards = {
     # Number of players: (plug,socket)
-    2: (1,5),
-    3: (2,6),
-    4: (1,3),
-    5: (0,0),
-    6: (0,0)
+    2: (1, 5),
+    3: (2, 6),
+    4: (1, 3),
+    5: (0, 0),
+    6: (0, 0)
 }
 
+
 def back_of_card(plant):
-    if 3 <= plant.min_bid <= 15: return "plug"
+    if 3 <= plant.min_bid <= 15:
+        return "plug"
     return "socket"

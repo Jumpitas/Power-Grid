@@ -5,7 +5,6 @@ from spade.message import Message
 import random
 import json
 
-
 class GameManagerAgent(Agent):
     class GameBehaviour(CyclicBehaviour):
         def __init__(self, game_manager):

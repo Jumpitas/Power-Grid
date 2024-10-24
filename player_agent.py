@@ -35,7 +35,7 @@ class ReceivePhaseBehaviour(CyclicBehaviour):
                 self.agent.elektro += income
                 print(f"Player {self.agent.player_id} received income: {income}. Total Elektro: {self.agent.elektro}")'''
 
-            if msg.body.startswith("PHASE_1"):
+            if msg.body.startswith("phase1"):
                 # Handle player order notification
                 player_order = msg.get_metadata("player_order")
                 print(f"Player {self.agent.player_id} is in position {player_order}")

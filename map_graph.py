@@ -161,9 +161,9 @@ class BoardMap:
         - current owner (owner)
     """
     def __init__(self, cities, links):
-        self.cities = cities
-        self.links = links
-        self.step = 1 # varies with the game phases
+        self.nodes = cities
+        self.edges = links
+        self.step = 3 # varies with the game phases
 
         self.map = nx.Graph()
 
@@ -174,6 +174,15 @@ class BoardMap:
         # Add edges with weights (cost A -> B)
         self.map.add_weighted_edges_from(links)
 
+    def update_cities(self, c):
+        self.nodes = c
+
+    def update_edges(self, e):
+        self.edges = e
+
+    def update_map(self, m):
+        self.map = m
+
     def city_name(self, tag):
         """
         Returns the name of the city.
@@ -181,13 +190,13 @@ class BoardMap:
         :param tag: the city 3-letter tag
         :return: city name string
         """
-        if tag not in self.cities:
+        if tag not in self.nodes:
             logging.error(f"City with tag '{tag}' not found.")
             return None
 
-        return self.cities[tag]
+        return self.nodes[tag]
 
-    def get_owner(self, tag):
+    def get_current_owners(self, tag):
         """
         Returns the current owner of a given city.
 
@@ -200,11 +209,11 @@ class BoardMap:
             logging.error(f"City with tag '{tag}' not found.")
             return None
 
-    def update_owner(self, player, tag):
+    def update_owner(self, player, tag, max_occupancy = 1):
         """
         Updates the owner of a city based on the provided city tag and player ID.
 
-        :param player: the ID of the player who will now own the city
+        :param player: the ID of the player who will now own the city as well
         :param tag: the 3-letter tag of the city
         :return: 0 or 1 if no errors occur, or something goes wrong respectively
         """
@@ -222,6 +231,7 @@ class BoardMap:
             logging.error("Tag not found.")
             return 1
 
+    ##################### vai ter que ir buscar fora, ou entao o manager tem que dizer ao environment qual e o step.
     def get_max_occupancy(self):
         if self.step == 1:
             return 1
@@ -238,9 +248,10 @@ class BoardMap:
         """
         status = {}
         for city in self.map.nodes:
-            status[city] = self.get_owner(city)
+            status[city] = self.get_current_owners(city)
         return status
 
+    ###################### vai tao nao ser preciso, se for e preciso ser updated, pq owner != owners
     def available_path(self, tag):
         """
         Finds the available path from a given city using Breadth-First Search.
@@ -252,6 +263,9 @@ class BoardMap:
           - The owner of the city;
           - The size of the path (if the land isn't owned, return 0).
         """
+
+        pass
+        '''
         owner = self.get_owner(tag)
 
         if owner == "":
@@ -274,7 +288,7 @@ class BoardMap:
                         queue.append(neighbor)
                         path_size += 1
 
-        return owner, path_size
+        return owner, path_size'''
 
     def has_ended(self, required_cities):
         """
@@ -287,43 +301,92 @@ class BoardMap:
           - The player who won (if none, returns an empty string).
 
         """
-        for player in self.get_all_players():
-            player_city_count = self.count_player_cities(player)
-            if player_city_count >= required_cities:
+
+        d = self.count_player_cities() # dictionary 'playerID': no_cities (owned by that playerID)
+
+        '''
+        # assuming many can win, just in case
+        list_winners = []
+        for player in d:
+            count = d[player]
+            if count >= required_cities:
+                list_winners.append(player)
+        return list_winners
+        '''
+        # this assumes only one won
+        for player in d:
+            count = d[player]
+            if count >= required_cities:
                 return True, player
         return False, ""
 
-    def count_player_cities(self, player):
-        """
-        Returns the number of cities owned by a given player.
-        :param player: The player name.
-        :return: The count of those cities.
-        """
-        count = 0
-        for city in self.map.nodes:
-            owners = self.get_owner(city)
-            if player in owners:
-                count += 1
-        return count
 
+    '''
+    em vez das funcoes abaixo sempre, faz mais sentido ter um dicionario que e um attrivute do ambiente IMO
+    {player1:1, player2:3, ...}
+    e sempre que e comprada uma cidade atualiza-se, isto estaria no environment, vou deixar pq se calhar de vez em quando
+    no jogo justifica se testar com este brute force para ver se tao coerentes os dicionarios, e atualizados direito
+
+    '''
     def get_all_players(self):
         """
-        :return: Returns a list of all players.
+        :return: Returns a dictionary with all players as keys and 0 as the initial value.
         """
-        players = set()
+        players = {} # super nao otimizado, depois e preciso haver inicializado esse dict e ir atualizando
         for city in self.map.nodes:
-            owners = self.get_owner(city)
-            players.update(owners)
-        return list(players)
+            owners = self.get_current_owners(city)  # Assuming get_owner(city) returns a list of owners
+            for owner in owners:
+                if owner not in players:
+                    players[owner] = 0  # Initialize the player count to 0
+        return players
+
+    def count_player_cities(self):
+        """
+        Returns a dictionary with each player as the key and the number of cities they own as the value.
+        :return: A dictionary mapping each player to the number of cities they own.
+        """
+        # Start with a dictionary with all players initialized to 0
+        player_city_count = self.get_all_players()
+
+        # Iterate over all cities in the map
+        for city in self.map.nodes:
+            owners = self.get_current_owners(city)  # Get the list of owners for the current city
+
+            # For each owner of the city, increment their city count
+            for owner in owners:
+                if owner in player_city_count:
+                    player_city_count[owner] += 1
+
+        return player_city_count
 
 
 '''
-# test get_owner method
+This part fulfills the purpose of checking if the methods are working properly
+'''
+
 game = BoardMap(citiesUS, edgesUS)
-game.update_owner('player1', 'ATA')
-print(game.get_owner('ATA'))
-'''
 
+game.update_owner('player1', 'ATA')
+game.update_owner('player1', 'KNX')
+game.update_owner('player1', 'SAV')
+game.update_owner('player2', 'ATA')
+game.update_owner('player2', 'KNX')
+game.update_owner('player3', 'SAV')
+game.update_owner('player1', 'SEA')
+
+#  Print the empty city nodes, and their respective
+for node in game.nodes:
+    node_value = game.get_current_owners(node)
+    if node_value != []:
+        print(f"Node: {node}, Value: {node_value}")
+
+print("------------------\n", game.get_all_players())  # initializes all the players correctly
+print(game.count_player_cities())  # Shows the proper game state, can be used to evaluate if the game ended or not
+
+print("------------------\n", game.has_ended(5))
+
+
+'''
 # test the BFS
 game = BoardMap(citiesUS, edgesUS)
 game.update_owner('player1', 'ATA')
@@ -333,3 +396,4 @@ game.update_owner('player1', 'SAV')
 
 print(game.available_path('ATA'))
 print(game.has_ended(4))
+'''
