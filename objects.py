@@ -232,7 +232,7 @@ class PowerPlantMarket:
         random.shuffle(self.plug)
         self.market = self.plug[:8]
         self.plug = self.plug[8:]
-        self.market.sort(key=lambda plant: plant.min_bid)
+        self.market.sort(key=lambda plant: plant.min_bid) # sort by min_bid 
         plug_card = [self.plug.pop()]
 
         # 9 in rulebook
@@ -244,8 +244,13 @@ class PowerPlantMarket:
         self.socket = self.socket[set_aside[1]:]
 
         # agora que vai deixar de haver separação, distinguir cartas usando back_of_card
-        # topo do deck é index 0 e bottom é -1
+        # topo do deck é index 0 e bottom é -1 (deve tirar-se do topo)
         self.deck = self.socket + self.plug
         random.shuffle(self.deck)
         self.deck = plug_card + self.deck + step3
 
+    def phase5(self):
+        highest = self.market.pop()
+        self.deck += highest
+        self.market += self.deck.pop(0)
+        self.market.sort(key=lambda plant: plant.min_bid) # sort by min_bid 
