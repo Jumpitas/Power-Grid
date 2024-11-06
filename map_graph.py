@@ -363,7 +363,7 @@ class BoardMap:
 '''
 This part fulfills the purpose of checking if the methods are working properly
 '''
-
+'''
 game = BoardMap(citiesUS, edgesUS)
 
 game.update_owner('player1', 'ATA')
@@ -384,7 +384,7 @@ print("------------------\n", game.get_all_players())  # initializes all the pla
 print(game.count_player_cities())  # Shows the proper game state, can be used to evaluate if the game ended or not
 
 print("------------------\n", game.has_ended(5))
-
+'''
 
 '''
 # test the BFS

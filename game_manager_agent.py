@@ -12,27 +12,24 @@ class GameManagerAgent(CyclicBehaviour):
         self.round=1
         self.map = self.get_map()
 
-    def get_map(self):
-        # Instantiate the map, needs to get it from main propb
-        # return BoardMap()
-        async def run(self):
-            while True:
-                if self.current_phase == "setup":
-                    await self.setup_phase()
-                elif self.current_phase == "phase1":
-                    await self.phase1()
-                elif self.current_phase == "phase2":
-                    await self.phase2()
-                elif self.current_phase == "phase3":
-                    await self.phase3()
-                elif self.current_phase == "phase4":
-                    await self.phase4()
-                elif self.current_phase == "phase5":
-                    await self.phase5()
-                else:
-                    pass
-                    # placeholder pq nao me lembro se ha mais
-                await asyncio.sleep(1)  # Adjust timing as needed
+    async def run(self):
+        while True:
+            if self.current_phase == "setup":
+                await self.setup_phase()
+            elif self.current_phase == "phase1":
+                await self.phase1()
+            elif self.current_phase == "phase2":
+                await self.phase2()
+            elif self.current_phase == "phase3":
+                await self.phase3()
+            elif self.current_phase == "phase4":
+                await self.phase4()
+            elif self.current_phase == "phase5":
+                await self.phase5()
+            else:
+                pass
+                # placeholder pq nao me lembro se ha mais
+            await asyncio.sleep(1)  # Adjust timing as needed
 
 
     async def setup_phase(self):
