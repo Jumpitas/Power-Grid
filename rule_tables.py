@@ -33,6 +33,8 @@ resource_replenishment = {
     }
 }
 
+
+
 price_table = {
     "uranium": {1: 16, 2: 14, 3: 12, 4: 10,
                 5: 8, 6: 7, 7: 6, 8: 5,
@@ -89,3 +91,10 @@ def back_of_card(plant):
     if 3 <= plant.min_bid <= 15:
         return "plug"
     return "socket"
+
+'''
+a = {}
+for step in resource_replenishment:
+    a[step] = resource_replenishment[step][5]
+print(a)
+'''

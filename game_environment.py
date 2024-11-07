@@ -3,14 +3,18 @@ import random
 
 from map_graph import BoardMap, citiesUS, edgesUS  # map class
 from rule_tables import *
-
+from objects import ResourceMarket, PowerPlantMarket
 
 class Environment:
     def __init__(self, player_no):
 
         # ---------------  Full dictionaries imported ----------------
         self.city_cashback = city_cashback
-        self.resource_replenishment = resource_replenishment
+
+        self.resource_replenishment = {} # {1: {resourceA:X, resourceB:Y}, 2: {...}}, key=step, already restrained to the player number
+        for step in resource_replenishment:
+            self.resource_replenishment[step] = resource_replenishment[step][player_no]
+
         self.price_table = price_table
         self.building_cost = building_cost
 
@@ -35,16 +39,17 @@ class Environment:
         # falta escolher as cores das regioes que sao precisas, a subregiao do mapa
 
 
+
         # 2, 3) Create current available houses and elektro, current  based on number of players
         self.players = \
             {f'player{i + 1}':
                  {'houses': 22,
                   'elektro': 50,
-                  'cities':[],
-                  'connected_cities': 0,
-                  'power_plants': [],  # List of power plant numbers,
+                  'cities_owned': [],
+                  'number_cities_owned': 0, # each time a new city is bought, increment
+                  'cities_powered': [],
+                  'power_plants': [],  # List of power plant numbers
                   'resources': {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0},
-                  'power_plant_market': []
         } for i in range(player_no)}
 
         """
@@ -69,7 +74,17 @@ class Environment:
         print("Check if houses was updated for the players: ", self.players['player1']['houses']) # should be 21
         """
 
+        # 5) Create the Resource Market
+        self.resource_market = ResourceMarket() # ver os comentarios la
 
+        # 6) Corresponds to the resource bank variable on the objects.py
+
+        # 7) Corresponds to the resource_replenishment variable defined above (dictionarynception)
+
+        # 8) 9)
+        self.power_plant_market = PowerPlantMarket()
+        # precisa de revisao esta parte, pq nao e bem o mercado so
+        # e preciso ver se a carta step3 ta bem progrmaada
 
 env_test = Environment(3)
 

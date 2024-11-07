@@ -163,18 +163,31 @@ power_plant_plug = [
 
 from rule_tables import price_table, resource_replenishment, remove_cards
 
+
+'''
+# ORIGINAL resource bank
 resource_bank = {
     "coal": 24,
     "oil": 24,
     "garbage": 24,
     "uranium": 12
 }
+'''
+
+
+resource_bank = {
+    "coal": 0,
+    "oil": 6,
+    "garbage": 15,
+    "uranium": 9
+}
 
 
 class ResourceMarket:
-    def __init__(self, coal, oil, garbage, uranium):
+    # o default nestes casos corresponde ao passo 5. das recharged rules
+    def __init__(self, coal=24, oil=18, garbage=9, uranium=3):
         self.max = {"coal": 24,"oil": 24,
-                    "garbage": 24,"uranium": 12} 
+                    "garbage": 24,"uranium": 12}
         # quantidades atuais de recursos no mercado
         self.in_market = {"coal":coal, "oil":oil,
                           "garbage":garbage, "uranium":uranium}
@@ -184,18 +197,18 @@ class ResourceMarket:
         if self.in_market[rtype]==0: return None
 
         if rtype == "uranium": return price_table[rtype][self.in_market["uranium"]]
-        else: 
+        else:
             for key, price in price_table[rtype].items():
                 if self.in_market[str(rtype)] in key:
                     return price
-                
+
     # restrição de agente: só compra se tiver dinheiro e puder guardar
     def purchase_batch(self, rtype, rnum):
         if self.in_market[rtype] >= rnum:
             self.in_market[rtype] -= rnum
             return True
         return False
-    
+
     def refill_market(self, step, nplayer):
         fillup = resource_replenishment[step][nplayer]
         for rtype, rnum in fillup:
