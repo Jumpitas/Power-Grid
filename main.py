@@ -1,7 +1,7 @@
 # main.py
 
 import asyncio
-from game_manager_agent import GameManagerAgent
+from manager_idea import GameManagerAgent  # Adjusted import to match the module name
 from player_agent import PowerGridPlayerAgent
 
 async def main():
