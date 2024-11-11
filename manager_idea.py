@@ -224,6 +224,8 @@ class GameManagerAgent(Agent):
 
             # Highest bidder buys the power plant
             highest_bidder["elektro"] -= current_bid
+
+            # Can only have 3 !!!
             highest_bidder["power_plants"].append(power_plant)
             highest_bidder["has_bought_power_plant"] = True
             # Remove the power plant from the market
@@ -279,6 +281,8 @@ class GameManagerAgent(Agent):
             response = await self.receive(timeout=30)
             if response and str(response.sender).split('/')[0] == player["jid"]:
                 data = json.loads(response.body)
+
+                # is the player buying resources implemented?
                 purchases = data.get("purchases", {})
                 total_cost = 0
                 for resource, amount in purchases.items():
