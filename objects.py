@@ -76,6 +76,7 @@ class PowerPlant:
                     elif counter == self.resource_num:
                         return replenish_bank
         return None
+    
 
 
 # Baralho de cartas original

@@ -1,6 +1,7 @@
 # player_agent.py
 
 import asyncio
+import random
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
@@ -139,11 +140,27 @@ class ReceivePhaseBehaviour(CyclicBehaviour):
         # Simple logic to choose the cheapest power plant
         cheapest_plant = min(market, key=lambda pp: pp['min_bid'])
         return cheapest_plant['min_bid']
+    
+    def wants_power_plant(self):
+        # Simple random function for the player to decide if they want to buy
+        ans = [True,False]
+        return ans[random.randint(0,1)]
 
-    def decide_bid_amount(self):
-        pass
+    # Only bids on power plants if: want to buy and has money to spare (at least 20%)
+    def decide_bid_amount(self,curMax):
+        if self.wants_power_plant() and (self.elektro * 0.8) >= curMax:
+            return curMax + 1
+        return "pass"
 
     def decide_resources_to_buy(self, resource_market):
+        can_buy = {}
+        for pp in self.power_plants:
+            if pp.is_hybrid:
+                for rtype in pp.resource_types: 
+                    if (rtype not in can_buy) and (True): can_buy.update(rtype:diff)
+
+            else:
+                if rtype not in can_buy: can_buy.append(rtype)
         pass
 
     def decide_cities_to_build(self, map_status):
