@@ -156,8 +156,9 @@ class ReceivePhaseBehaviour(CyclicBehaviour):
         can_buy = {}
         for pp in self.power_plants:
             if pp.is_hybrid:
-                for rtype in pp.resource_types: 
-                    if (rtype not in can_buy) and (True): can_buy.update(rtype:diff)
+                for rtype in pp.resource_types:
+                    if (rtype not in can_buy) and (pp.available_storage):
+                        can_buy.update({rtype:pp.available_storage})
 
             else:
                 if rtype not in can_buy: can_buy.append(rtype)
