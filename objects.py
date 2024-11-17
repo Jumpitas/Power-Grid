@@ -12,6 +12,8 @@ class PowerPlant:
         self.resource_type = resource_type
         self.resource_num = resource_num
         self.is_hybrid = is_hybrid
+
+        # Simplified step3 card -> step3 not used
         self.is_step = is_step
         # For resource management per power plant (optional):
         self.storage = {rtype: 0 for rtype in resource_type}

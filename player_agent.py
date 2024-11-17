@@ -266,11 +266,15 @@ class PowerGridPlayerAgent(Agent):
             # Simple logic: buy resources needed for one round of operation
             purchases = {}
             for plant in self.agent.power_plants:
-                resource_types = plant.get('resource_type', [])
-                resource_needed = plant.get('resource_num', 0)
-                if not resource_types or resource_needed == 0:
+                resource_types = plant.resource_type
+
+                # ////////////////////////////////////////////////////
+                # Resources needed vão ser feitas com base no available storage de cada powerplant
+                resource_needed = plant.available_storage
+                
+                if len(resource_types) == 0 or resource_needed == 0:
                     continue  # Eco-friendly plant, no resources needed
-                if plant.get('is_hybrid', False):
+                if plant.is_hybrid:
                     # Hybrid plant: buy resources in any combination
                     for rtype in resource_types:
                         available = resource_market.get(rtype, 0)
