@@ -163,16 +163,19 @@ class BoardMap:
     def __init__(self, cities, links):
         self.nodes = cities
         self.edges = links
-        self.step = 3 # varies with the game phases
+        self.step = 1 # varies with the game phases
 
         self.map = nx.Graph()
 
         # Each node is added here
         for code, city_name in cities.items():
-            self.map.add_node(code, owners= [])  # 'owners' initialized an empty list
+            self.map.add_node(code, owners=[])  # 'owners' initialized an empty list
 
         # Add edges with weights (cost A -> B)
         self.map.add_weighted_edges_from(links)
+
+    def get_nodes(self):
+        return self.nodes
 
     def update_cities(self, c):
         self.nodes = c
@@ -358,6 +361,9 @@ class BoardMap:
                     player_city_count[owner] += 1
 
         return player_city_count
+
+game = BoardMap(citiesUS, edgesUS)
+print(game.get_nodes())
 
 
 '''

@@ -25,6 +25,11 @@ class Environment:
 
         #--------------- Display current market state ----------------
 
+        self.step = 2
+        # this will be fixed as 2, however the original game does have 3, but for the sake of implementation
+        # we will only use 2 as a middle term. Most of the requirements for step 1 and 3 work are already defined nevertheless.
+
+
         # From now on, follows the preparation steps order on the original order
 
         # 1) Map Instance
@@ -37,7 +42,6 @@ class Environment:
         """
 
         # falta escolher as cores das regioes que sao precisas, a subregiao do mapa
-
 
 
         # 2, 3) Create current available houses and elektro, current  based on number of players
@@ -85,12 +89,60 @@ class Environment:
 
         # 6) Corresponds to the resource bank variable on the objects.py
 
-        # 7) Corresponds to the resource_replenishment variable defined above (dictionarynception)
+        # 7) Corresponds to the 3 variable defined above (dictionarynception)
 
         # 8) 9)
         self.power_plant_market = PowerPlantMarket(player_no)
         # precisa de revisao esta parte, pq nao e bem o mercado so
-        # e preciso ver se a carta step3 ta bem progrmaada
+        # e preciso ver se a carta step3 ta bem programada
+
+        def update_cities_owned(self, playerID, city):
+            """
+            :param playerID: playerX
+            :param city: the city tag
+
+            Already considering the step limit regarding the max number of owners per city.
+
+            :updates:
+               - the map graph instance inside this class, regarding the tag ownership
+               - the players dictionary, regarding
+                   - the list with the owned cities
+                   - incrementing the number of cities owned by one
+                   - the number of houses (the player places the house there)
+                   - the elektro amount (-10), being the price to pay to the bank
+
+            :returns:
+                - 0 if it updates successfully with no errors
+                - 1 if it doesn't find the city tag in the graph
+                - 2 if the limit of city owners if crossed
+                -
+            """
+            cities_list = list(self.map.get_nodes().keys())
+            if city not in cities_list:
+                return 1 # tag misquoted
+
+            l = self.map.get_current_owners(city)
+            if len(l)>=self.step:
+                return 2 # cannot build there
+
+            else:
+                self.map.update_owner(playerID, city)
+                self.players[playerID]['cities'].append(city)
+                self.players[playerID]['number_cities_owned'] += 1
+                self.players[playerID]['houses'] -= 1
+                self.players[playerID]['elektro'] -= 10
+
+                return 0
+
+        def update_cities_powered(self, playerID, city):
+            """
+            :param playerID: playerX
+            :param city: the city tag
+            :updates:
+               - the players dictionary, regarding
+                   - the list with the powered cities
+                    - powerplant markets?????????
+            """
         print(f"Initial Current Market: {self.power_plant_market.current_market}")
         print(f"Initial Future Market: {self.power_plant_market.future_market}")
         print(f"Initial Deck: {self.power_plant_market.deck}")

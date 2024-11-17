@@ -6,6 +6,7 @@ from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 import json
+from game_environment import Environment
 
 class PowerGridPlayerAgent(Agent):
     def __init__(self, jid, password, player_id):
@@ -17,7 +18,15 @@ class PowerGridPlayerAgent(Agent):
         self.elektro = 50  # Starting money
         self.connected_cities = 0
         self.power_plant_market = []  # Latest power plant market info
-        self.step = 1  # Current game step
+        # self.step = 1  # Current game step
+
+    def get_inventory(self):
+        """
+        :updates: the attributes regarding the inventory
+
+        """
+        # assuming q no main a instancia do environment esta inicializada
+        self.inventory = env.players[self.player_id]
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
@@ -105,6 +114,9 @@ class PowerGridPlayerAgent(Agent):
                         bid = data.get("bid", 0)
                         if winner == self.agent.jid:
                             # Add the power plant to the player's state
+                            '''
+                            aqui e preciso atualizar o inv do player qyue ganha com elektro e powerplants
+                            '''
                             self.agent.power_plants.append(power_plant)
                             self.agent.elektro -= bid  # Deduct the bid amount
                             print(f"Player {self.agent.player_id} won the auction for power plant {power_plant.get('min_bid', '')} with bid {bid}.")
@@ -177,6 +189,18 @@ class PowerGridPlayerAgent(Agent):
             await asyncio.sleep(1)  # Yield control to event loop
 
         # Decision-making methods
+
+        def get_inventory(self):
+            inv = env[playerID]
+            self.elektro = inv[elektro]
+
+
+            return -
+
+        def update_inventory(self):
+            inv = {}
+            inv[elektro] =
+
         def choose_power_plant(self, market):
             # Simple logic to choose the cheapest power plant
             if not market:
