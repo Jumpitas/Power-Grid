@@ -5,6 +5,9 @@ from map_graph import BoardMap, citiesUS, edgesUS  # map class
 from rule_tables import *
 from objects import ResourceMarket, PowerPlantMarket
 
+# Global pointer to the environment instance
+environment_instance = None
+
 class Environment:
     def __init__(self, player_no):
 

@@ -12,21 +12,56 @@ class PowerGridPlayerAgent(Agent):
     def __init__(self, jid, password, player_id):
         super().__init__(jid, password)
         self.player_id = player_id
-        self.houses = []  # List of city tags where the player has houses
-        self.power_plants = []  # List of power plant dictionaries
-        self.resources = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
-        self.elektro = 50  # Starting money
-        self.connected_cities = 0
-        self.power_plant_market = []  # Latest power plant market info
+        self.houses = 0
+        self.elektro = 0
+        self.cities_owned = []
+        self.number_cities_owned = 0,
+        self.cities_powered = []
+        self.power_plants = []
+        self.resources = {}
+        self.has_bought_power_plant = False
+        self.position = 0
         # self.step = 1  # Current game step
 
     def get_inventory(self):
         """
-        :updates: the attributes regarding the inventory
-
+        Updates the player's attributes with the current inventory from the global environment.
         """
-        # assuming q no main a instancia do environment esta inicializada
-        self.inventory = env.players[self.player_id]
+        global environment_instance
+        if environment_instance is None:
+            raise ValueError("Environment is not initialized.")
+
+        inventory = environment_instance.players[self.player_id]
+        self.houses = inventory['houses']
+        self.elektro = inventory['elektro']
+        self.cities_owned = inventory['cities_owned']
+        self.number_cities_owned = inventory['number_cities_owned']
+        self.cities_powered = inventory['cities_powered']
+        self.power_plants = inventory['power_plants']
+        self.resources = inventory['resources']
+        self.has_bought_power_plant = inventory['has_bought_power_plant']
+        self.position = inventory['position']
+
+    def update_inventory(self):
+        """
+        Updates the global environment's inventory for this player
+        based on the current attributes.
+        """
+        global environment_instance
+        if environment_instance is None:
+            raise ValueError("Environment is not initialized.")
+
+        environment_instance.players[self.player_id] = {
+            'houses': self.houses,
+            'elektro': self.elektro,
+            'cities_owned': self.cities_owned,
+            'number_cities_owned': self.number_cities_owned,
+            'cities_powered': self.cities_powered,
+            'power_plants': self.power_plants,
+            'resources': self.resources,
+            'has_bought_power_plant': self.has_bought_power_plant,
+            'position': self.position
+        }
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
@@ -190,16 +225,6 @@ class PowerGridPlayerAgent(Agent):
 
         # Decision-making methods
 
-        def get_inventory(self):
-            inv = env[playerID]
-            self.elektro = inv[elektro]
-
-
-            return -
-
-        def update_inventory(self):
-            inv = {}
-            inv[elektro] =
 
         def choose_power_plant(self, market):
             # Simple logic to choose the cheapest power plant
