@@ -50,6 +50,8 @@ class Environment:
                   'cities_powered': [],
                   'power_plants': [],  # List of power plant numbers
                   'resources': {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0},
+                  'has_bought_power_plant': False,
+                  'position': 0
         } for i in range(player_no)}
 
         """
@@ -69,6 +71,10 @@ class Environment:
             self.order_players.append(player)
         random.shuffle(self.order_players)
 
+        # Assign positions based on the shuffled order
+        for position, player_name in enumerate(self.order_players, start=1):
+            self.players[player_name]['position'] = position
+
         """
         print("Randomly generated player order: ", self.order_players)
         print("Check if houses was updated for the players: ", self.players['player1']['houses']) # should be 21
@@ -82,9 +88,12 @@ class Environment:
         # 7) Corresponds to the resource_replenishment variable defined above (dictionarynception)
 
         # 8) 9)
-        self.power_plant_market = PowerPlantMarket()
+        self.power_plant_market = PowerPlantMarket(player_no)
         # precisa de revisao esta parte, pq nao e bem o mercado so
         # e preciso ver se a carta step3 ta bem progrmaada
+        print(f"Initial Current Market: {self.power_plant_market.current_market}")
+        print(f"Initial Future Market: {self.power_plant_market.future_market}")
+        print(f"Initial Deck: {self.power_plant_market.deck}")
 
 env_test = Environment(3)
 
