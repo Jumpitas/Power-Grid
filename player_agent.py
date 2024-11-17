@@ -174,8 +174,12 @@ class PowerGridPlayerAgent(Agent):
 
                     elif action == "purchase_result":
                         # Handle purchase result
-                        purchases = data.get("purchases", {})
-                        total_cost = data.get("total_cost", 0)
+
+                        # /////////////////////////////////////////////////
+                        # Removed implicit {} and 0 values below in order to test message values
+                        purchases = data.get("purchases")
+                        total_cost = data.get("total_cost")
+                        
                         # Update player's resources and elektro
                         for resource, amount in purchases.items():
                             self.agent.resources[resource] += amount
@@ -277,11 +281,11 @@ class PowerGridPlayerAgent(Agent):
                 if plant.is_hybrid:
                     # Hybrid plant: buy resources in any combination
                     for rtype in resource_types:
-                        available = resource_market.get(rtype, 0)
+                        available = resource_market[rtype]
                         if available > 0 and self.agent.elektro > 0:
-                            # Buy as much as possible up to resource_needed
+                            # Always purchases as much as possible (up to resource_needed)
                             amount_to_buy = min(available, resource_needed)
-                            purchases[rtype] = purchases.get(rtype, 0) + amount_to_buy
+                            purchases[rtype] += amount_to_buy 
                             resource_needed -= amount_to_buy
                             self.agent.elektro -= amount_to_buy * 1  # Simplified cost
                             if resource_needed <= 0:
@@ -289,12 +293,11 @@ class PowerGridPlayerAgent(Agent):
                 else:
                     # Non-hybrid plant: buy required resources
                     rtype = resource_types[0]
-                    available = resource_market.get(rtype, 0)
+                    available = resource_market[rtype]
                     if available > 0 and self.agent.elektro > 0:
                         amount_to_buy = min(available, resource_needed)
-                        purchases[rtype] = purchases.get(rtype, 0) + amount_to_buy
+                        purchases[rtype] += amount_to_buy
                         self.agent.elektro -= amount_to_buy * 1  # Simplified cost
-                # Note: This is a simplified example; you should adjust prices and logic as per game rules
             return purchases
 
         def decide_cities_to_build(self, map_status):

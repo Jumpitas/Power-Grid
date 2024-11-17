@@ -381,9 +381,9 @@ class GameManagerAgent(Agent):
             if response and str(response.sender).split('/')[0] == player["jid"]:
                 data = json.loads(response.body)
 
-                # Is the player buying resources implemented?
                 purchases = data.get("purchases", {})
                 total_cost = 0
+                
                 for resource, amount in purchases.items():
                     price = self.calculate_resource_price(resource, amount)
                     if price <= player["elektro"] and amount <= self.environment.resource_market.in_market[resource]:
