@@ -1,5 +1,3 @@
-# game_manager.py
-
 import asyncio
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
@@ -125,9 +123,6 @@ class GameManagerAgent(Agent):
                     continue  # Skip if the player already bought a power plant this round
                 await self.force_player_to_buy_power_plant(player)
 
-            # If a discounted plant wasn't purchased, remove it
-            self.remove_unpurchased_discounted_plant()
-
             # End of phase 2
             self.current_phase = "phase3"
             print("Moving to Phase 3")
@@ -136,8 +131,6 @@ class GameManagerAgent(Agent):
             """
             Each player must buy a power plant. They cannot pass.
             """
-            self.apply_discount_to_smallest()  # Place discount token if not placed yet
-
             # Gather current power plant market information
             current_market_info = [self.serialize_power_plant(pp) for pp in self.environment.power_plant_market.current_market]
             msg = Message(to=player["jid"])
@@ -171,7 +164,7 @@ class GameManagerAgent(Agent):
             active_players = [p for p in self.get_players_in_order() if not p["has_bought_power_plant"]]
             if starting_player not in active_players:
                 active_players.append(starting_player)
-            base_min_bid = 1 if self.discount_token_on_plant(power_plant) else power_plant.min_bid
+            base_min_bid = power_plant.min_bid
 
             # Prompt starting player for initial bid
             msg = Message(to=starting_player["jid"])
@@ -183,6 +176,7 @@ class GameManagerAgent(Agent):
             })
             await self.send(msg)
 
+            # Wait for player's response
             response = await self.receive(timeout=15)
             if response and str(response.sender).split('/')[0] == starting_player["jid"]:
                 data = json.loads(response.body)
@@ -259,7 +253,6 @@ class GameManagerAgent(Agent):
 
                 # Update the power plant market
                 self.environment.power_plant_market.remove_plant_from_market(power_plant)
-                self.remove_discount_token_if_applicable(power_plant)
                 self.environment.power_plant_market.update_markets()
 
                 # Notify all players of the auction result
@@ -273,18 +266,6 @@ class GameManagerAgent(Agent):
                         "bid": current_bid
                     })
                     await self.send(msg)
-        def apply_discount_to_smallest(self):
-            """
-            Place the discount token on the smallest power plant in the current market if not done yet.
-            During the next auction, this plant's minimum bid is 1.
-            """
-            if not self.environment.power_plant_market.current_market:
-                return
-            # Find the smallest power plant by its min_bid
-            smallest_plant = min(self.environment.power_plant_market.current_market, key=lambda pp: pp.min_bid)
-            if not hasattr(smallest_plant, 'discount'):
-                smallest_plant.discount = True
-                print(f"Discount token placed on power plant {smallest_plant.min_bid}. Minimum bid is now 1 Elektro.")
 
         def get_power_plant_by_number(self, number):
             """
@@ -299,36 +280,6 @@ class GameManagerAgent(Agent):
                 if plant.min_bid == number:
                     return plant
             return None
-
-        def discount_token_on_plant(self, power_plant):
-            """
-            Returns True if the discount token is on the given power plant (i.e., if it's the smallest in the current market).
-            """
-            return hasattr(power_plant, 'discount') and power_plant.discount is True
-
-        def remove_discount_token_if_applicable(self, power_plant):
-            """
-            If the given power plant had the discount token, remove it after it's bought or removed from the market.
-            """
-            if hasattr(power_plant, 'discount'):
-                delattr(power_plant, 'discount')
-                print(f"Discount token removed from power plant {power_plant.min_bid}.")
-
-        def remove_unpurchased_discounted_plant(self):
-            """
-            If the discounted power plant was not purchased during Phase 2, remove it from the game and replace it.
-            But since players must always buy a power plant, this should not occur. Still, we handle this for completeness.
-            """
-            discounted_plant = None
-            for plant in self.environment.power_plant_market.current_market:
-                if self.discount_token_on_plant(plant):
-                    discounted_plant = plant
-                    break
-            if discounted_plant:
-                # If the discounted plant was not purchased (which shouldn't happen), remove it
-                print(f"Discounted power plant {discounted_plant.min_bid} was not purchased. Removing it from the game.")
-                self.environment.power_plant_market.remove_plant_from_market(discounted_plant)
-                self.environment.power_plant_market.update_markets()
 
         async def handle_power_plant_discard(self, player):
             """
