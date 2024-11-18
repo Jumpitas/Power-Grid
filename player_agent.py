@@ -24,6 +24,7 @@ class PowerGridPlayerAgent(Agent):
         self.cities_owned = []
         self.number_cities_owned = 0,
         self.cities_powered = []
+        
 
         # ////////////////////////////
         # Only for testing!
