@@ -9,7 +9,21 @@ from objects import ResourceMarket, PowerPlantMarket
 environment_instance = None
 
 class Environment:
+    _instance = None  # Class-level private variable to hold the singleton instance
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Environment, cls).__new__(cls)
+            # Initialize the instance only once
+            cls._instance.__initialized = False
+        return cls._instance
+
+        # Original initialization logic
     def __init__(self, player_no):
+        if self.__initialized:  # Prevent re-initialization
+            return
+        self.__initialized = True
+
         # ---------------  Full dictionaries imported ----------------
         self.city_cashback = city_cashback
 

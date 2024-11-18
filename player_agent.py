@@ -7,7 +7,7 @@ from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 import json
 
-# from game_environment import Environment
+from game_environment import Environment
 
 # Only for testing!
 from objects import power_plant_socket
@@ -31,6 +31,7 @@ class PowerGridPlayerAgent(Agent):
         # self.power_plant_market = []  # Latest power plant market info
         self.step = 2  # Current game step
 
+        environment_instance = Environment(None)
         self.get_inventory()
 
         '''
