@@ -8,17 +8,31 @@ from spade.message import Message
 import json
 from game_environment import Environment
 
+# ////////////////////////////
+# Only for testing!
+from objects import power_plant_socket
+
 class PowerGridPlayerAgent(Agent):
     def __init__(self, jid, password, player_id):
         super().__init__(jid, password)
         self.player_id = player_id
         self.houses = 0
+
+        # ////////////////////////////
+        # Only for testing!
         self.elektro = 0
         self.cities_owned = []
         self.number_cities_owned = 0,
         self.cities_powered = []
-        self.power_plants = []
-        self.resources = {}
+
+        # ////////////////////////////
+        # Only for testing!
+        if self.player_id==1: self.power_plants = [power_plant_socket[20]]
+        else: self.power_plants = [power_plant_socket[10]]
+
+        # ////////////////////////////
+        # Only for testing!
+        self.resources = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
         self.has_bought_power_plant = False
         self.position = 0
         # self.step = 1  # Current game step
@@ -160,8 +174,10 @@ class PowerGridPlayerAgent(Agent):
 
                 elif phase == "phase3":
                     if action == "buy_resources":
+                        self.agent.elektro = 500
                         # Receive resource market information
-                        resource_market = data.get("resource_market", {})
+                        resource_market = data.get("resource_market")
+                        # print("Resource market being passed onto players: ", resource_market)
                         # Decide which resources to buy
                         purchases = self.decide_resources_to_buy(resource_market)
                         purchase_msg = Message(to=sender)
@@ -207,7 +223,7 @@ class PowerGridPlayerAgent(Agent):
                         cities = data.get("cities", [])
                         total_cost = data.get("total_cost", 0)
                         # Update player's cities
-                        self.agent.houses.extend(cities)
+                        self.agent.cities_owned.extend(cities)
                         self.agent.elektro -= total_cost
                         print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
@@ -268,8 +284,9 @@ class PowerGridPlayerAgent(Agent):
 
         def decide_resources_to_buy(self, resource_market):
             # Simple logic: buy resources needed for one round of operation
-            purchases = {}
+            purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
             for plant in self.agent.power_plants:
+                print("\n\nPlant being checked: ",plant)
                 resource_types = plant.resource_type
 
                 # ////////////////////////////////////////////////////
@@ -298,12 +315,12 @@ class PowerGridPlayerAgent(Agent):
                         amount_to_buy = min(available, resource_needed)
                         purchases[rtype] += amount_to_buy
                         self.agent.elektro -= amount_to_buy * 1  # Simplified cost
-            return purchases
+            return (purchases)
 
         def decide_cities_to_build(self, map_status):
             # Simple logic: attempt to build in the first city that is not yet owned by this agent
             for city, data in map_status.items():
-                if city not in self.agent.houses:
+                if city not in self.agent.cities_owned:
                     # Assume we can afford it for now and city is within step occupancy
                     return [city]
             return []
