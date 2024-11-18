@@ -112,53 +112,73 @@ class GameManagerAgent(Agent):
 
         async def phase2(self):
             print("Phase 2: Auction Power Plants")
-            # Mark that no players have bought a power plant this round
+            # Reset players' auction status
             for player in self.players.values():
                 player["has_bought_power_plant"] = False
 
-            # Players take turns starting auctions
+            # Players take turns starting auctions based on player_order
             player_order = self.get_players_in_order()
             for player in player_order:
                 if player["has_bought_power_plant"]:
-                    continue  # Skip if the player already bought a power plant this round
-                await self.force_player_to_buy_power_plant(player)
+                    continue  # Skip if already bought a power plant this round
+                await self.handle_player_auction_choice(player)
 
-            # End of phase 2
+            # End of Phase 2
             self.current_phase = "phase3"
             print("Moving to Phase 3")
 
-        async def force_player_to_buy_power_plant(self, player):
+        async def handle_player_auction_choice(self, player):
             """
-            Each player must buy a power plant. They cannot pass.
+            Handles the player's choice to either start an auction or pass.
             """
-            # Gather current power plant market information
-            current_market_info = [self.serialize_power_plant(pp) for pp in self.environment.power_plant_market.current_market]
+            # Determine if it's the first round
+            is_first_round = self.round == 1
+
+            # Players must buy a power plant in the first round
+            can_pass = not is_first_round
+
+            # Prepare the list of power plants for the player to choose from
+            available_power_plants = [self.serialize_power_plant(pp) for pp in self.power_plant_market.current_market]
+
             msg = Message(to=player["jid"])
             msg.body = json.dumps({
                 "phase": "phase2",
-                "action": "choose_power_plant",
-                "power_plants": current_market_info
+                "action": "choose_or_pass",
+                "power_plants": available_power_plants,
+                "can_pass": can_pass
             })
             await self.send(msg)
 
             # Wait for player's response
             response = await self.receive(timeout=30)
             if response and str(response.sender).split('/')[0] == player["jid"]:
-                data = json.loads(response.body)
+                try:
+                    data = json.loads(response.body)
+                except json.JSONDecodeError:
+                    print(f"Invalid JSON response from {player['jid']}. Treating as pass.")
+                    choice = "pass"
+                else:
+                    choice = data.get("choice", "pass")
+            else:
+                print(f"No response from {player['jid']}. Treating as pass.")
+                choice = "pass"
+
+            if choice == "pass" and can_pass:
+                player["has_bought_power_plant"] = True
+                print(f"{player['jid']} chooses to pass on starting an auction.")
+            elif choice == "auction":
                 chosen_number = data.get("power_plant_number", None)
                 chosen_plant = self.get_power_plant_by_number(chosen_number)
                 if chosen_plant:
                     await self.conduct_auction(chosen_plant, player)
                 else:
-                    # If no valid power plant chosen or invalid input, pick the cheapest automatically
-                    cheapest_plant = min(self.environment.power_plant_market.current_market, key=lambda pp: pp.min_bid)
-                    print(f"Invalid choice from {player['jid']} or no response. Automatically picking the cheapest plant {cheapest_plant.min_bid}")
-                    await self.conduct_auction(cheapest_plant, player)
+                    # Invalid choice, treat as pass
+                    print(f"Invalid power plant choice by {player['jid']}. They pass this auction phase.")
+                    player["has_bought_power_plant"] = True
             else:
-                # If no response, pick the cheapest plant automatically for the player
-                cheapest_plant = min(self.environment.power_plant_market.current_market, key=lambda pp: pp.min_bid)
-                print(f"No response from {player['jid']} in auction. Automatically picking the cheapest plant {cheapest_plant.min_bid}")
-                await self.conduct_auction(cheapest_plant, player)
+                # Invalid choice or player couldn't pass
+                player["has_bought_power_plant"] = True
+                print(f"{player['jid']} cannot afford any power plant and passes.")
 
         async def conduct_auction(self, power_plant, starting_player):
             active_players = [p for p in self.get_players_in_order() if not p["has_bought_power_plant"]]
@@ -179,81 +199,83 @@ class GameManagerAgent(Agent):
             # Wait for player's response
             response = await self.receive(timeout=15)
             if response and str(response.sender).split('/')[0] == starting_player["jid"]:
-                data = json.loads(response.body)
-                bid = data.get("bid", 0)
-                if bid >= base_min_bid and bid <= starting_player["elektro"]:
-                    current_bid = bid
-                    highest_bidder = starting_player
-                else:
-                    # Invalid bid; default to base_min_bid
-                    current_bid = base_min_bid
-                    highest_bidder = starting_player
-                    print(f"{starting_player['jid']} made an invalid initial bid. Starting bid is {base_min_bid}.")
+                try:
+                    data = json.loads(response.body)
+                    bid = data.get("bid", 0)
+                except json.JSONDecodeError:
+                    print(f"Invalid JSON bid from {starting_player['jid']}. Starting bid is {base_min_bid}.")
+                    bid = base_min_bid
             else:
-                # No response; default to base_min_bid
+                # No response; starting player must bid at least the base_min_bid
+                print(f"No response from {starting_player['jid']} for initial bid. Starting bid is {base_min_bid}.")
+                bid = base_min_bid
+
+            if bid >= base_min_bid and bid <= starting_player["elektro"]:
+                current_bid = bid
+                highest_bidder = starting_player
+            else:
+                # Invalid bid; starting player must bid at least the base_min_bid
                 current_bid = base_min_bid
                 highest_bidder = starting_player
-                print(f"No response from {starting_player['jid']} for initial bid. Starting bid is {base_min_bid}.")
+                print(f"{starting_player['jid']} made an invalid initial bid. Starting bid is {base_min_bid}.")
 
             bidding_active = True
+            bidders = active_players.copy()
 
             # Proceed with bidding from other players
-            while bidding_active and len(active_players) > 1:
-                new_highest_bid = current_bid
-                for player in active_players:
+            while bidding_active and len(bidders) > 1:
+                for player in bidders.copy():
                     if player == highest_bidder:
                         continue  # Skip the highest bidder
                     msg = Message(to=player["jid"])
                     msg.body = json.dumps({
                         "phase": "phase2",
                         "action": "bid",
-                        "current_bid": new_highest_bid,
+                        "current_bid": current_bid,
                         "power_plant": self.serialize_power_plant(power_plant)
                     })
                     await self.send(msg)
 
                     response = await self.receive(timeout=15)
                     if response and str(response.sender).split('/')[0] == player["jid"]:
-                        data = json.loads(response.body)
-                        bid = data.get("bid", 0)
-                        if bid > new_highest_bid and bid <= player["elektro"]:
-                            # Valid new highest bid
-                            new_highest_bid = bid
+                        try:
+                            data = json.loads(response.body)
+                            bid = data.get("bid", 0)
+                        except json.JSONDecodeError:
+                            print(f"Invalid JSON bid from {player['jid']}. They pass.")
+                            bid = 0
+
+                        if bid > current_bid and bid <= player["elektro"]:
+                            current_bid = bid
                             highest_bidder = player
+                            print(f"{player['jid']} bids {bid} for power plant {power_plant.min_bid}.")
                         else:
-                            print(f"{player['jid']} can't outbid {new_highest_bid}. They are out of this auction.")
-                            active_players.remove(player)
-                            if len(active_players) == 1:
+                            print(f"{player['jid']} passes or cannot outbid {current_bid}.")
+                            bidders.remove(player)
+                            if len(bidders) == 1:
                                 bidding_active = False
                                 break
                     else:
-                        print(f"No valid response from {player['jid']}. They are out of this auction.")
-                        active_players.remove(player)
-                        if len(active_players) == 1:
+                        print(f"No response from {player['jid']}. They pass.")
+                        bidders.remove(player)
+                        if len(bidders) == 1:
                             bidding_active = False
                             break
-
-                if new_highest_bid == current_bid:
-                    bidding_active = False
-                else:
-                    current_bid = new_highest_bid
-                    if len(active_players) == 1:
-                        bidding_active = False
 
             # Finalize auction
             if highest_bidder is not None:
                 highest_bidder["elektro"] -= current_bid
                 highest_bidder["power_plants"].append(power_plant)
                 highest_bidder["has_bought_power_plant"] = True
-                print(
-                    f"{highest_bidder['jid']} wins the auction for power plant {power_plant.min_bid} with a bid of {current_bid} Elektro.")
+                print(f"{highest_bidder['jid']} wins the auction for power plant {power_plant.min_bid} with a bid of {current_bid} Elektro.")
+
                 # Handle discard if necessary
                 if len(highest_bidder["power_plants"]) > 3:
                     await self.handle_power_plant_discard(highest_bidder)
 
                 # Update the power plant market
-                self.environment.power_plant_market.remove_plant_from_market(power_plant)
-                self.environment.power_plant_market.update_markets()
+                self.power_plant_market.remove_plant_from_market(power_plant)
+                self.power_plant_market.update_markets()
 
                 # Notify all players of the auction result
                 for p in self.players.values():
@@ -267,52 +289,66 @@ class GameManagerAgent(Agent):
                     })
                     await self.send(msg)
 
+                # If starting player did not win, they can choose to start another auction
+                if starting_player != highest_bidder and not starting_player["has_bought_power_plant"]:
+                    await self.handle_player_auction_choice(starting_player)
+            else:
+                print("Auction ended with no winner.")
+
         def get_power_plant_by_number(self, number):
             """
-            Retrieves a PowerPlant object from the current or future market given its min_bid number.
+            Retrieves a PowerPlant object from the current market given its min_bid number.
             """
-            # Check in the current market
-            for plant in self.environment.power_plant_market.current_market:
-                if plant.min_bid == number:
-                    return plant
-            # Check in the future market
-            for plant in self.environment.power_plant_market.future_market:
+            # Check in the current market only
+            for plant in self.power_plant_market.current_market:
                 if plant.min_bid == number:
                     return plant
             return None
 
         async def handle_power_plant_discard(self, player):
             """
-            When a player has more than 3 power plants, they must discard one.
-            This method asks the player to choose which plant to discard.
+            When a player has more than 3 power plants, they must discard one (not the one just bought).
             """
+            # Exclude the just bought power plant
+            discardable_plants = [pp for pp in player["power_plants"] if pp != player["power_plants"][-1]]
+
             msg = Message(to=player["jid"])
             msg.body = json.dumps({
                 "phase": "phase2",
                 "action": "discard_power_plant",
-                "power_plants": [self.serialize_power_plant(pp) for pp in player["power_plants"]]
+                "power_plants": [self.serialize_power_plant(pp) for pp in discardable_plants]
             })
             await self.send(msg)
 
             # Wait for player's response
             response = await self.receive(timeout=30)
             if response and str(response.sender).split('/')[0] == player["jid"]:
-                data = json.loads(response.body)
-                discard_number = data.get("discard_number", None)
+                try:
+                    data = json.loads(response.body)
+                    discard_number = data.get("discard_number", None)
+                except json.JSONDecodeError:
+                    discard_number = None
+
                 discarded_plant = self.get_player_power_plant_by_number(player, discard_number)
-                if discarded_plant:
+                if discarded_plant and discarded_plant != player["power_plants"][-1]:
                     player["power_plants"].remove(discarded_plant)
                     print(f"{player['jid']} discarded power plant {discarded_plant.min_bid}.")
                 else:
-                    # If an invalid discard number is given, discard the cheapest plant automatically
-                    plant_to_discard = min(player["power_plants"], key=lambda pp: pp.min_bid)
-                    player["power_plants"].remove(plant_to_discard)
-                    print(f"Invalid discard number from {player['jid']}. Automatically discarding power plant {plant_to_discard.min_bid}.")
+                    # Invalid choice; automatically discard the oldest plant (excluding the just bought one)
+                    if discardable_plants:
+                        plant_to_discard = discardable_plants[0]
+                        player["power_plants"].remove(plant_to_discard)
+                        print(f"Invalid discard number from {player['jid']}. Automatically discarding power plant {plant_to_discard.min_bid}.")
+                    else:
+                        print(f"No discardable plants for {player['jid']}.")
             else:
-                # If no response, discard the cheapest plant automatically
-                plant_to_discard = min(player["power_plants"], key=lambda pp: pp.min_bid)
-                player["power_plants"].remove(plant_to_discard)
-                print(f"No response from {player['jid']} on discard. Automatically discarding power plant {plant_to_discard.min_bid}.")
+                # No response; automatically discard the oldest plant (excluding the just bought one)
+                if discardable_plants:
+                    plant_to_discard = discardable_plants[0]
+                    player["power_plants"].remove(plant_to_discard)
+                    print(f"No response from {player['jid']} on discard. Automatically discarding power plant {plant_to_discard.min_bid}.")
+                else:
+                    print(f"No discardable plants for {player['jid']}.")
 
         def get_player_power_plant_by_number(self, player, number):
             for plant in player["power_plants"]:
