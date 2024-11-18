@@ -409,6 +409,7 @@ class GameManagerAgent(Agent):
             # Implement resource price calculation using the environment's price table
             total_price = 0
             resource_market = self.environment.resource_market
+            resource = str(resource).strip()
             for _ in range(amount):
                 price = resource_market.resource_price(resource)
                 if price is not None:

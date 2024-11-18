@@ -93,7 +93,7 @@ class ResourceMarket:
         Returns the cost of purchasing the next unit of the given resource type.
         If the resource is unavailable, returns None.
         """
-        current_amount = self.in_market.get(resource_type, 0)
+        current_amount = self.in_market.get(resource_type)
         if current_amount == 0:
             return None  # No resources available
         if resource_type == "uranium":
