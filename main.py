@@ -10,8 +10,8 @@ async def main():
     num_players = 2 # <- modifiable
 
     # environment instance
-    global environment_instance
-    environment_instance = Environment(num_players)
+    # global environment_instance
+    environment_instance = Environment(num_players) # <- if this is globalized the rest works
 
     if not (2 <= num_players <= 6):
         raise ValueError("Number of players must be between 2 and 6.")
