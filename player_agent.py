@@ -27,7 +27,7 @@ class PowerGridPlayerAgent(Agent):
         self.has_bought_power_plant = False
         self.position = None  # Will be set during setup
         self.power_plant_market = []  # Latest power plant market info
-        self.step = 1  # Current game step
+        self.step = 2  # Current game step
         self.connected_cities = 0  # Number of connected cities
 
         # Initialize power plants for testing
