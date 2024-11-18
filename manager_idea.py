@@ -9,8 +9,14 @@ import json
 # Import necessary classes and data structures
 from objects import ResourceMarket, PowerPlantMarket, PowerPlant
 from map_graph import BoardMap, citiesUS, edgesUS
-from rule_tables import city_cashback, resource_replenishment, building_cost, step_start_cities, game_end_cities
-# Note: Ensure that 'rule_tables' contains the necessary data structures.
+from rule_tables import (
+    city_cashback,
+    resource_replenishment,
+    building_cost,
+    step_start_cities,
+    game_end_cities
+)
+from game_environment import Environment  # Import Environment class
 
 class GameManagerAgent(Agent):
     class GameBehaviour(CyclicBehaviour):
@@ -18,26 +24,12 @@ class GameManagerAgent(Agent):
             super().__init__()
             self.game_manager = game_manager
             self.player_jids = player_jids  # List of player JIDs
-            self.players = {}  # Will be initialized in the environment
+            self.players = {}  # Will be initialized in the setup phase
             self.current_phase = "setup"
             self.round = 1
             self.current_step = 1  # Game starts at Step 1
             self.game_over = False
-
-            # Initialize the PowerPlantMarket
-            self.power_plant_market = PowerPlantMarket(len(player_jids))
-
-            # Initialize the ResourceMarket
-            self.resource_market = ResourceMarket()
-
-            # Initialize the Map
-            self.map = BoardMap(citiesUS, edgesUS)
-
-            # Other game-related variables
-            self.city_cashback = city_cashback
-            self.resource_replenishment = resource_replenishment
-            self.building_cost = building_cost
-            self.game_end_cities = game_end_cities
+            self.environment = None  # Will be initialized in setup phase
 
         async def run(self):
             if self.game_over:
@@ -60,7 +52,11 @@ class GameManagerAgent(Agent):
 
         async def setup_phase(self):
             print("Game Manager is setting up the game.")
-            # Initialize player states
+            # Initialize the environment with the number of players
+            player_no = len(self.player_jids)
+            self.environment = Environment(player_no)
+
+            # Build mappings between JIDs and player names
             self.jid_to_player_name = {}
             self.player_name_to_jid = {}
             for jid in self.player_jids:
@@ -68,25 +64,24 @@ class GameManagerAgent(Agent):
                 self.jid_to_player_name[jid] = player_name
                 self.player_name_to_jid[player_name] = jid
 
-                # Initialize player data
+            # Initialize player states from the environment
+            for jid in self.player_jids:
+                player_name = self.jid_to_player_name[jid]
+                player_data = self.environment.players[player_name]
                 self.players[jid] = {
                     "jid": jid,
                     "name": player_name,
-                    "elektro": 50,  # Starting money
-                    "power_plants": [],
-                    "resources": {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0},
-                    "cities": [],
-                    "houses": 22,  # Each player has 22 houses
-                    "position": None,
-                    "has_bought_power_plant": False
+                    "elektro": player_data['elektro'],
+                    "power_plants": player_data['power_plants'],
+                    "resources": player_data['resources'],
+                    "cities": player_data['cities_owned'],
+                    "houses": player_data['houses'],
+                    "position": player_data['position'],
+                    "has_bought_power_plant": player_data.get('has_bought_power_plant', False)
                 }
 
-            # Determine initial player order randomly
-            import random
-            shuffled_jids = self.player_jids.copy()
-            random.shuffle(shuffled_jids)
-            for index, jid in enumerate(shuffled_jids):
-                self.players[jid]["position"] = index + 1
+            # Use the player order from the environment
+            self.player_order = [self.player_name_to_jid[p] for p in self.environment.order_players]
 
             # Notify all players about the setup phase completion
             for jid in self.player_jids:
@@ -130,7 +125,7 @@ class GameManagerAgent(Agent):
             for player in self.players.values():
                 player["has_bought_power_plant"] = False
 
-            # Players take turns starting auctions based on player_order
+            # Players take turns starting auctions based on player order
             player_order = self.get_players_in_order()
             for player in player_order:
                 if player["has_bought_power_plant"]:
@@ -152,7 +147,9 @@ class GameManagerAgent(Agent):
             can_pass = not is_first_round
 
             # Prepare the list of power plants for the player to choose from
-            available_power_plants = [self.serialize_power_plant(pp) for pp in self.power_plant_market.current_market]
+            available_power_plants = [
+                self.serialize_power_plant(pp) for pp in self.environment.power_plant_market.current_market
+            ]
 
             msg = Message(to=player["jid"])
             msg.body = json.dumps({
@@ -168,11 +165,10 @@ class GameManagerAgent(Agent):
             if response and str(response.sender).split('/')[0] == player["jid"]:
                 try:
                     data = json.loads(response.body)
+                    choice = data.get("choice", "pass")
                 except json.JSONDecodeError:
                     print(f"Invalid JSON response from {player['jid']}. Treating as pass.")
                     choice = "pass"
-                else:
-                    choice = data.get("choice", "pass")
             else:
                 print(f"No response from {player['jid']}. Treating as pass.")
                 choice = "pass"
@@ -288,8 +284,8 @@ class GameManagerAgent(Agent):
                     await self.handle_power_plant_discard(highest_bidder)
 
                 # Update the power plant market
-                self.power_plant_market.remove_plant_from_market(power_plant)
-                self.power_plant_market.update_markets()
+                self.environment.power_plant_market.remove_plant_from_market(power_plant)
+                self.environment.power_plant_market.update_markets()
 
                 # Notify all players of the auction result
                 for p in self.players.values():
@@ -314,7 +310,7 @@ class GameManagerAgent(Agent):
             Retrieves a PowerPlant object from the current market given its min_bid number.
             """
             # Check in the current market only
-            for plant in self.power_plant_market.current_market:
+            for plant in self.environment.power_plant_market.current_market:
                 if plant.min_bid == number:
                     return plant
             return None
@@ -378,6 +374,15 @@ class GameManagerAgent(Agent):
             )
             return sorted_players
 
+        def get_players_in_reverse_order(self):
+            # Return a list of players (dict) sorted by their position in reverse order
+            sorted_players = sorted(
+                self.players.values(),
+                key=lambda p: p["position"],
+                reverse=True
+            )
+            return sorted_players
+
         def determine_player_order(self):
             # Sort players based on number of cities connected and largest power plant
             players_list = list(self.players.values())
@@ -408,48 +413,158 @@ class GameManagerAgent(Agent):
 
         async def phase3(self):
             print("Phase 3: Buy Resources")
-            # Placeholder: Skipping Phase 3
-            # Notify players that Phase 3 is skipped
-            for jid in self.player_jids:
-                msg = Message(to=jid)
-                msg.body = json.dumps({
-                    "phase": "phase3",
-                    "action": "buy_resources",
-                    "resource_market": {},  # Empty since skipped
-                })
-                await self.send(msg)
+            # Players buy resources in reverse player order
+            player_order = self.get_players_in_reverse_order()
+            for player in player_order:
+                await self.handle_resource_purchase(player)
+
             # Proceed to Phase 4
             self.current_phase = "phase4"
-            print("Phase 3 is skipped. Moving to Phase 4")
+            print("Moving to Phase 4")
+
+        async def handle_resource_purchase(self, player):
+            msg = Message(to=player["jid"])
+            msg.body = json.dumps({
+                "phase": "phase3",
+                "action": "buy_resources",
+                "resource_market": self.environment.resource_market.in_market
+            })
+            await self.send(msg)
+
+            # Wait for player's response
+            response = await self.receive(timeout=30)
+            if response and str(response.sender).split('/')[0] == player["jid"]:
+                try:
+                    data = json.loads(response.body)
+                    purchases = data.get("purchases", {})
+                except json.JSONDecodeError:
+                    print(f"Invalid JSON response from {player['jid']} in resource purchase phase.")
+                    purchases = {}
+
+                total_cost = 0
+
+                for resource, amount in purchases.items():
+                    price = self.calculate_resource_price(resource, amount)
+                    if price <= player["elektro"] and amount <= self.environment.resource_market.in_market[resource]:
+                        player["elektro"] -= price
+                        player["resources"][resource] += amount
+                        self.environment.resource_market.in_market[resource] -= amount
+                        total_cost += price
+                    else:
+                        print(f"{player['jid']} cannot purchase {amount} of {resource}")
+
+                # Notify player of the purchase result
+                msg = Message(to=player["jid"])
+                msg.body = json.dumps({
+                    "phase": "phase3",
+                    "action": "purchase_result",
+                    "purchases": purchases,
+                    "total_cost": total_cost
+                })
+                await self.send(msg)
+            else:
+                print(f"No response from {player['jid']} in resource purchase phase.")
+
+        def calculate_resource_price(self, resource, amount):
+            # Implement resource price calculation using the environment's price table
+            total_price = 0
+            resource_market = self.environment.resource_market
+            resource = str(resource).strip()
+            for _ in range(amount):
+                price = resource_market.resource_price(resource)
+                if price is not None:
+                    total_price += price
+                else:
+                    print(f"Not enough {resource} available.")
+                    break
+            return total_price
 
         async def phase4(self):
             print("Phase 4: Build Houses")
-            # Placeholder: Skipping Phase 4
-            # Notify players that Phase 4 is skipped
-            for jid in self.player_jids:
-                msg = Message(to=jid)
-                msg.body = json.dumps({
-                    "phase": "phase4",
-                    "action": "build_houses",
-                    "map_status": {},  # Empty since skipped
-                    "step": self.current_step
-                })
-                await self.send(msg)
+            # Players build houses in reverse player order
+            player_order = self.get_players_in_reverse_order()
+            for player in player_order:
+                await self.handle_build_houses(player)
+
             # Proceed to Phase 5
             self.current_phase = "phase5"
-            print("Phase 4 is skipped. Moving to Phase 5")
+            print("Moving to Phase 5")
+
+        async def handle_build_houses(self, player):
+            msg = Message(to=player["jid"])
+            msg.body = json.dumps({
+                "phase": "phase4",
+                "action": "build_houses",
+                "map_status": self.environment.map.get_status(),
+                "step": self.current_step
+            })
+            await self.send(msg)
+
+            # Wait for player's response
+            response = await self.receive(timeout=30)
+            if response and str(response.sender).split('/')[0] == player["jid"]:
+                try:
+                    data = json.loads(response.body)
+                    cities_to_build = data.get("cities", [])
+                except json.JSONDecodeError:
+                    print(f"Invalid JSON response from {player['jid']} in build houses phase.")
+                    cities_to_build = []
+
+                total_cost = 0
+                for city_tag in cities_to_build:
+                    cost = self.calculate_building_cost(player, city_tag)
+                    if cost <= player["elektro"] and self.is_city_available(city_tag, player):
+                        player["elektro"] -= cost
+                        player["cities"].append(city_tag)
+                        total_cost += cost
+                        self.environment.map.update_owner(player["jid"], city_tag)
+                    else:
+                        print(f"{player['jid']} cannot build in {city_tag}")
+
+                # Notify player of the build result
+                msg = Message(to=player["jid"])
+                msg.body = json.dumps({
+                    "phase": "phase4",
+                    "action": "build_result",
+                    "cities": cities_to_build,
+                    "total_cost": total_cost
+                })
+                await self.send(msg)
+            else:
+                print(f"No response from {player['jid']} in build houses phase.")
+
+        def calculate_building_cost(self, player, city_tag):
+            # Implement building cost calculation using the environment's building cost
+            city = self.environment.map.map.nodes.get(city_tag)
+            if city:
+                occupancy = len(city.get('owners', []))
+                if occupancy < self.current_step:
+                    building_cost = self.environment.building_cost[self.current_step]
+                    # For simplicity, assume connection cost is zero
+                    return building_cost
+            return float('inf')
+
+        def is_city_available(self, city_tag, player):
+            city = self.environment.map.map.nodes.get(city_tag)
+            if city:
+                occupancy = len(city.get('owners', []))
+                if occupancy < self.current_step:
+                    return True
+            return False
 
         async def phase5(self):
             print("Phase 5: Bureaucracy")
-            # Placeholder: Skipping Phase 5
-            # Notify players that Phase 5 is skipped
-            for jid in self.player_jids:
-                msg = Message(to=jid)
-                msg.body = json.dumps({
-                    "phase": "phase5",
-                    "action": "bureaucracy",
-                })
-                await self.send(msg)
+            # Players earn income and resources are replenished
+            for player in self.players.values():
+                income = self.calculate_income(player)
+                player["elektro"] += income
+                self.consume_resources(player)
+
+            self.resupply_resource_market()
+
+            # Update the power plant market
+            self.update_power_plant_market_phase5()
+
             # Check for game end conditions
             if self.check_game_end():
                 await self.end_game()
@@ -459,10 +574,81 @@ class GameManagerAgent(Agent):
                 self.round += 1
                 print(f"Starting Round {self.round}")
 
+        def calculate_income(self, player):
+            # Calculate income based on the number of cities powered
+            cities_powered = self.calculate_cities_powered(player)
+            income_table = self.environment.city_cashback
+            if cities_powered < len(income_table):
+                return income_table[cities_powered]
+            else:
+                return income_table[-1]
+
+        def calculate_cities_powered(self, player):
+            # Determine how many cities the player can power based on resources and power plants
+            total_capacity = 0
+            for plant in player["power_plants"]:
+                resource_types = plant.resource_type
+                resource_needed = plant.resource_num
+                if not resource_types:  # Eco plants
+                    total_capacity += plant.cities
+                else:
+                    # Check if player has enough resources
+                    if plant.is_hybrid:
+                        # For hybrid, sum resources
+                        total_resources = sum(player["resources"][rtype] for rtype in resource_types)
+                        if total_resources >= resource_needed:
+                            total_capacity += plant.cities
+                    else:
+                        rtype = resource_types[0]
+                        if player["resources"][rtype] >= resource_needed:
+                            total_capacity += plant.cities
+            return min(total_capacity, len(player["cities"]))
+
+        def consume_resources(self, player):
+            # Deduct resources used for powering cities
+            for plant in player["power_plants"]:
+                resource_types = plant.resource_type
+                resource_needed = plant.resource_num
+                if not resource_types:
+                    continue  # Eco plants consume no resources
+                else:
+                    if plant.is_hybrid:
+                        # For hybrid, consume resources from available types
+                        for rtype in resource_types:
+                            available = player["resources"][rtype]
+                            consume = min(available, resource_needed)
+                            player["resources"][rtype] -= consume
+                            resource_needed -= consume
+                            if resource_needed == 0:
+                                break
+                    else:
+                        rtype = resource_types[0]
+                        if player["resources"][rtype] >= resource_needed:
+                            player["resources"][rtype] -= resource_needed
+
+        def resupply_resource_market(self):
+            # Resupply resources based on the current step and number of players
+            nplayers = len(self.player_jids)
+            rates = self.environment.resource_replenishment[self.current_step]
+            for resource, amount in rates.items():
+                self.environment.resource_market.in_market[resource] += amount
+                # Cap at maximum (not implemented here)
+
+        def update_power_plant_market_phase5(self):
+            # Remove the lowest-numbered power plant from the current market and replace it
+            if self.environment.power_plant_market.deck:
+                # Remove the lowest-numbered power plant from the current market
+                removed_plant = self.environment.power_plant_market.current_market.pop(0)
+                # Draw a new power plant from the deck and add it to the future market
+                new_plant = self.environment.power_plant_market.deck.pop(0)
+                self.environment.power_plant_market.future_market.append(new_plant)
+                # Update the markets
+                self.environment.power_plant_market.update_markets()
+
         def check_game_end(self):
             # Game ends when a player connects a certain number of cities
             nplayers = len(self.player_jids)
-            end_game_cities = self.game_end_cities.get(nplayers, 17)  # Default to 17 if not specified
+            end_game_cities = self.environment.game_end_cities
             for player in self.players.values():
                 if len(player["cities"]) >= end_game_cities:
                     return True
@@ -474,7 +660,7 @@ class GameManagerAgent(Agent):
             max_cities_powered = 0
             winner = None
             for player in self.players.values():
-                cities_powered = len(player["cities"])  # Since we skipped resource phases
+                cities_powered = self.calculate_cities_powered(player)
                 if cities_powered > max_cities_powered:
                     max_cities_powered = cities_powered
                     winner = player

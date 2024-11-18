@@ -3,28 +3,36 @@
 import asyncio
 from manager_idea import GameManagerAgent  # Adjusted import to match the module name
 from player_agent import PowerGridPlayerAgent
+from game_environment import Environment
+
 
 async def main():
-    # Define player JIDs and passwords
-    player1_jid = "player1@localhost"
-    player1_passwd = "player1password"
-    player2_jid = "player2@localhost"
-    player2_passwd = "player2password"
+    num_players = 2 # <- modifiable
 
-    # Create player agents
-    player1 = PowerGridPlayerAgent(player1_jid, player1_passwd, player_id=1)
-    player2 = PowerGridPlayerAgent(player2_jid, player2_passwd, player_id=2)
+    # environment instance
+    global environment_instance
+    environment_instance = Environment(num_players)
 
-    # Start player agents
-    await player1.start()
-    print(f"Player {player1.player_id} started.")
-    await player2.start()
-    print(f"Player {player2.player_id} started.")
+    if not (2 <= num_players <= 6):
+        raise ValueError("Number of players must be between 2 and 6.")
 
-    # Create game manager agent
+    # define ids, passwords based on the number of players
+    players = []
+    for i in range(1, num_players + 1):
+        player_jid = f"player{i}@localhost"
+        player_passwd = f"player{i}password"
+        player = PowerGridPlayerAgent(player_jid, player_passwd, player_id=i)
+        players.append(player)
+
+    # start the player agents
+    for player in players:
+        await player.start()
+        print(f"Player {player.player_id} started.")
+
+    # Create and start game manager agent
     gamemanager_jid = "gamemanager@localhost"
     gamemanager_passwd = "gamemanagerpassword"
-    player_jids = [player1_jid, player2_jid]
+    player_jids = [f"player{i}@localhost" for i in range(1, num_players + 1)]
 
     gamemanager = GameManagerAgent(gamemanager_jid, gamemanager_passwd, player_jids)
     await gamemanager.start()
@@ -40,10 +48,9 @@ async def main():
         print("\nGame interrupted by user.")
     finally:
         # Gracefully stop all agents
-        await player1.stop()
-        print(f"Player {player1.player_id} stopped.")
-        await player2.stop()
-        print(f"Player {player2.player_id} stopped.")
+        for player in players:
+            await player.stop()
+            print(f"Player {player.player_id} stopped.")
         await gamemanager.stop()
         print("Game manager stopped.")
         print("Agents stopped. Game over.")

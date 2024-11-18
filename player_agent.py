@@ -1,7 +1,7 @@
 # player_agent.py
 
 import asyncio
-import random  # Ensure random is imported
+import random
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
@@ -11,17 +11,21 @@ class PowerGridPlayerAgent(Agent):
     def __init__(self, jid, password, player_id):
         super().__init__(jid, password)
         self.player_id = player_id
+        self.houses = 22  # Starting with 22 houses as per game rules
+        self.elektro = 50  # Starting money
         self.cities = []  # List of city tags where the player has built
+        self.cities_powered = []  # List of city tags that the player can power
         self.power_plants = []  # List of power plant dictionaries
         self.resources = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
-        self.elektro = 50  # Starting money
-        self.connected_cities = 0
+        self.has_bought_power_plant = False
+        self.position = None  # Will be set during setup
         self.power_plant_market = []  # Latest power plant market info
         self.step = 1  # Current game step
+        self.connected_cities = 0  # Number of connected cities
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
-            msg = await self.receive(timeout=10)
+            msg = await self.receive(timeout=30)
             if msg:
                 sender = str(msg.sender).split('/')[0]
 
@@ -38,12 +42,14 @@ class PowerGridPlayerAgent(Agent):
                 if phase == "setup":
                     # Handle setup phase
                     player_order = data.get("player_order")
+                    self.agent.position = player_order
                     print(f"Player {self.agent.player_id} received setup information. Position: {player_order}")
                     # Additional setup logic if needed
 
                 elif phase == "phase1":
                     # Handle player order notification
                     player_order = data.get("player_order")
+                    self.agent.position = player_order
                     print(f"Player {self.agent.player_id} is in position {player_order}")
 
                 elif phase == "phase2":
@@ -93,6 +99,19 @@ class PowerGridPlayerAgent(Agent):
                             choice_msg.body = json.dumps(choice_data)
                             await self.send(choice_msg)
                             print(f"Player {self.agent.player_id} must auction power plant {chosen_plant_number} (first round).")
+
+                    elif action == "choose_power_plant":
+                        # Handle forced choice to start an auction (no pass allowed)
+                        power_plant_market = data.get("power_plants", [])
+                        self.agent.power_plant_market = power_plant_market
+                        chosen_plant_number = self.choose_power_plant_to_auction(power_plant_market)
+                        choice_msg = Message(to=sender)
+                        choice_data = {
+                            "power_plant_number": chosen_plant_number
+                        }
+                        choice_msg.body = json.dumps(choice_data)
+                        await self.send(choice_msg)
+                        print(f"Player {self.agent.player_id} chooses to auction power plant {chosen_plant_number}.")
 
                     elif action == "initial_bid":
                         # Handle initial bid from starting player
@@ -149,35 +168,57 @@ class PowerGridPlayerAgent(Agent):
                         else:
                             print(f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.get('min_bid', '')} with bid {bid}.")
 
-                # Placeholder for Phase 3
                 elif phase == "phase3":
                     if action == "buy_resources":
-                        # Since we're skipping Phase 3, respond with no purchases
+                        # Receive resource market information
+                        resource_market = data.get("resource_market")
+                        # Decide which resources to buy
+                        purchases = self.decide_resources_to_buy(resource_market)
                         purchase_msg = Message(to=sender)
                         purchase_data = {
-                            "purchases": {},  # No purchases
-                            "total_cost": 0
+                            "purchases": purchases  # Dict of resources to buy
                         }
                         purchase_msg.body = json.dumps(purchase_data)
                         await self.send(purchase_msg)
-                        print(f"Player {self.agent.player_id} skips Phase 3 - Buy Resources.")
+                        print(f"Player {self.agent.player_id} decides to buy resources: {purchases}.")
 
-                # Placeholder for Phase 4
+                    elif action == "purchase_result":
+                        # Handle purchase result
+                        purchases = data.get("purchases", {})
+                        total_cost = data.get("total_cost", 0)
+                        # Update player's resources and elektro
+                        for resource, amount in purchases.items():
+                            self.agent.resources[resource] += amount
+                        self.agent.elektro -= total_cost
+                        print(f"Player {self.agent.player_id} purchased resources: {purchases} for total cost {total_cost}.")
+
                 elif phase == "phase4":
                     if action == "build_houses":
-                        # Since we're skipping Phase 4, respond with no builds
+                        # Receive map status and current step
+                        map_status = data.get("map_status", {})
+                        current_step = data.get("step", 1)
+                        self.agent.step = current_step
+                        # Decide where to build
+                        cities_to_build = self.decide_cities_to_build(map_status)
                         build_msg = Message(to=sender)
                         build_data = {
-                            "cities": [],  # No cities built
-                            "total_cost": 0
+                            "cities": cities_to_build
                         }
                         build_msg.body = json.dumps(build_data)
                         await self.send(build_msg)
-                        print(f"Player {self.agent.player_id} skips Phase 4 - Build Houses.")
+                        print(f"Player {self.agent.player_id} decides to build in cities: {cities_to_build}.")
 
-                # Placeholder for Phase 5
+                    elif action == "build_result":
+                        # Handle build result
+                        cities = data.get("cities", [])
+                        total_cost = data.get("total_cost", 0)
+                        # Update player's cities
+                        self.agent.cities.extend(cities)
+                        self.agent.elektro -= total_cost
+                        print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
+
                 elif phase == "phase5":
-                    # Phase 5 (Bureaucracy) may not require a player response
+                    # Phase 5 (Bureaucracy)
                     print(f"Player {self.agent.player_id} acknowledges Phase 5 - Bureaucracy.")
 
                 elif phase == "game_over":
@@ -259,10 +300,47 @@ class PowerGridPlayerAgent(Agent):
             plant_to_discard = min(power_plants, key=plant_value)
             return plant_to_discard.get('min_bid', None)
 
-        # Placeholders for other decision-making methods (Phases 3, 4, and 5)
-        # You can implement these methods when you work on these phases
+        def decide_resources_to_buy(self, resource_market):
+            # Simple logic: buy resources needed for one round of operation
+            purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+            for plant in self.agent.power_plants:
+                resource_types = plant.get('resource_type', [])
+                resource_needed = plant.get('resource_num', 0)
+                if not resource_types or resource_needed == 0:
+                    continue  # Eco-friendly plant, no resources needed
+                if plant.get('is_hybrid', False):
+                    # Hybrid plant: buy resources in any combination
+                    for rtype in resource_types:
+                        available = resource_market.get(rtype, 0)
+                        if available > 0 and self.agent.elektro > 0:
+                            # Purchase as much as possible (up to resource_needed)
+                            amount_to_buy = min(available, resource_needed)
+                            purchases[rtype] += amount_to_buy
+                            resource_needed -= amount_to_buy
+                            # For simplicity, assume each resource costs 1 Elektro
+                            self.agent.elektro -= amount_to_buy * 1
+                            if resource_needed <= 0:
+                                break
+                else:
+                    # Non-hybrid plant: buy required resources
+                    rtype = resource_types[0]
+                    available = resource_market.get(rtype, 0)
+                    if available > 0 and self.agent.elektro > 0:
+                        amount_to_buy = min(available, resource_needed)
+                        purchases[rtype] += amount_to_buy
+                        # For simplicity, assume each resource costs 1 Elektro
+                        self.agent.elektro -= amount_to_buy * 1
+            return purchases
+
+        def decide_cities_to_build(self, map_status):
+            # Simple logic: attempt to build in the first city that is not yet owned by this agent
+            for city, data in map_status.items():
+                if city not in self.agent.cities:
+                    # Assume we can afford it for now and city is within step occupancy
+                    return [city]
+            return []
 
     async def setup(self):
         print(f"Player {self.player_id} agent starting...")
-        receive_phase_behaviour = PowerGridPlayerAgent.ReceivePhaseBehaviour()
+        receive_phase_behaviour = self.ReceivePhaseBehaviour()
         self.add_behaviour(receive_phase_behaviour)
