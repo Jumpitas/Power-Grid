@@ -8,7 +8,7 @@ import globals
 
 
 async def main():
-    num_players = 2 # <- modifiable
+    num_players = 3 # <- modifiable
 
     # environment instance
     globals.environment_instance = Environment(num_players) # <- if this is globalized the rest works

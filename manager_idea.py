@@ -1,10 +1,12 @@
-# game_manager_agent.py
+# manager_idea.py
 
 import asyncio
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 import json
+import re
+import logging
 
 # Import necessary classes and data structures
 from objects import ResourceMarket, PowerPlantMarket, PowerPlant
@@ -17,7 +19,10 @@ from rule_tables import (
     game_end_cities
 )
 from game_environment import Environment  # Import Environment class
-import re
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class GameManagerAgent(Agent):
     class GameBehaviour(CyclicBehaviour):
@@ -57,24 +62,30 @@ class GameManagerAgent(Agent):
             player_no = len(self.player_jids)
             self.environment = Environment(player_no)
 
-            # Build mappings between JIDs and player names
-            self.jid_to_player_name = {}
-            self.player_name_to_jid = {}
+            # Build mappings between JIDs and player IDs
+            self.jid_to_player_id = {}
+            self.player_id_to_jid = {}
             for jid in self.player_jids:
-                player_name = jid.split('@')[0]  # Extract player name from JID
-                self.jid_to_player_name[jid] = player_name
-                self.player_name_to_jid[player_name] = jid
+                player_name = jid.split('@')[0]  # e.g., 'player1'
 
-            # Initialize player states from the environment
-            for jid in self.player_jids:
-                player_name = self.jid_to_player_name[jid]
+                # Extract integer player ID
+                match = re.search(r'\d+', player_name)
+                if match:
+                    player_id = int(match.group())
+                else:
+                    raise ValueError(f"Invalid player name format: {player_name}")
 
-                # //////////////////////////////////////////////////////7
-                player_name = int(re.search(r'\d+', player_name).group())
-                player_data = self.environment.players[player_name]
+                self.jid_to_player_id[jid] = player_id
+                self.player_id_to_jid[player_id] = jid
+
+                # Ensure the environment has data for this player_id
+                if player_id not in self.environment.players:
+                    raise KeyError(f"Player ID {player_id} not found in environment.")
+
+                player_data = self.environment.players[player_id]
                 self.players[jid] = {
                     "jid": jid,
-                    "name": player_name,
+                    "name": player_id,
                     "elektro": player_data['elektro'],
                     "power_plants": player_data['power_plants'],
                     "resources": player_data['resources'],
@@ -84,8 +95,12 @@ class GameManagerAgent(Agent):
                     "has_bought_power_plant": player_data.get('has_bought_power_plant', False)
                 }
 
-            # Use the player order from the environment
-            self.player_order = [self.player_name_to_jid[p] for p in self.environment.order_players]
+            # Ensure order_players contains integer player IDs
+            # For example, [1, 2, 3]
+            if not all(isinstance(p, int) for p in self.environment.order_players):
+                raise ValueError("order_players should contain integer player IDs.")
+
+            self.player_order = [self.player_id_to_jid[p] for p in self.environment.order_players]
 
             # Notify all players about the setup phase completion
             for jid in self.player_jids:
@@ -181,8 +196,8 @@ class GameManagerAgent(Agent):
                 player["has_bought_power_plant"] = True
                 print(f"{player['jid']} chooses to pass on starting an auction.")
             elif choice == "auction":
-                chosen_number = data.get("power_plant_number", None)
-                chosen_plant = self.get_power_plant_by_number(chosen_number)
+                chosen_plant_number = data.get("power_plant_number", None)
+                chosen_plant = self.get_power_plant_by_number(chosen_plant_number)
                 if chosen_plant:
                     await self.conduct_auction(chosen_plant, player)
                 else:
@@ -449,7 +464,7 @@ class GameManagerAgent(Agent):
 
                 for resource, amount in purchases.items():
                     price = self.calculate_resource_price(resource, amount)
-                    if price <= player["elektro"] and amount <= self.environment.resource_market.in_market[resource]:
+                    if price <= player["elektro"] and amount <= self.environment.resource_market.in_market.get(resource, 0):
                         player["elektro"] -= price
                         player["resources"][resource] += amount
                         self.environment.resource_market.in_market[resource] -= amount
@@ -683,6 +698,53 @@ class GameManagerAgent(Agent):
                 })
                 await self.send(msg)
             self.game_over = True
+
+        def calculate_building_cost(self, player, city_tag):
+            # Implement building cost calculation using the environment's building cost
+            city = self.environment.map.map.nodes.get(city_tag)
+            if city:
+                occupancy = len(city.get('owners', []))
+                if occupancy < self.current_step:
+                    building_cost = self.environment.building_cost[self.current_step]
+                    # For simplicity, assume connection cost is zero
+                    return building_cost
+            return float('inf')
+
+        def is_city_available(self, city_tag, player):
+            city = self.environment.map.map.nodes.get(city_tag)
+            if city:
+                occupancy = len(city.get('owners', []))
+                if occupancy < self.current_step:
+                    return True
+            return False
+
+        def determine_player_order(self):
+            # Sort players based on number of cities connected and largest power plant
+            players_list = list(self.players.values())
+
+            # Sort by number of cities first, descending
+            # Then by largest power plant number, descending
+            # If a player has no power plants, it treats largest power plant as 0
+            def largest_power_plant_num(player):
+                if player["power_plants"]:
+                    return max(pp.min_bid for pp in player["power_plants"])
+                return 0
+
+            players_list.sort(key=lambda p: (-len(p["cities"]), -largest_power_plant_num(p)))
+            return players_list
+
+        def serialize_power_plant(self, power_plant):
+            """
+            Serializes a PowerPlant object into a dictionary for sending via message.
+            """
+            return {
+                "min_bid": power_plant.min_bid,
+                "cities": power_plant.cities,
+                "resource_type": power_plant.resource_type,
+                "resource_num": power_plant.resource_num,
+                "is_hybrid": power_plant.is_hybrid,
+                "is_step": power_plant.is_step
+            }
 
     def __init__(self, jid, password, player_jids):
         super().__init__(jid, password)
