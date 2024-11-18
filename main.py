@@ -4,14 +4,16 @@ import asyncio
 from manager_idea import GameManagerAgent  # Adjusted import to match the module name
 from player_agent import PowerGridPlayerAgent
 from game_environment import Environment
+import globals
 
 
 async def main():
     num_players = 2 # <- modifiable
 
     # environment instance
-    # global environment_instance
-    environment_instance = Environment(num_players) # <- if this is globalized the rest works
+    globals.environment_instance = Environment(num_players) # <- if this is globalized the rest works
+
+    print(globals.environment_instance.players)
 
     if not (2 <= num_players <= 6):
         raise ValueError("Number of players must be between 2 and 6.")

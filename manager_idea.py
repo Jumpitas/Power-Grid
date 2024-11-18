@@ -17,6 +17,7 @@ from rule_tables import (
     game_end_cities
 )
 from game_environment import Environment  # Import Environment class
+import re
 
 class GameManagerAgent(Agent):
     class GameBehaviour(CyclicBehaviour):
@@ -67,6 +68,9 @@ class GameManagerAgent(Agent):
             # Initialize player states from the environment
             for jid in self.player_jids:
                 player_name = self.jid_to_player_name[jid]
+
+                # //////////////////////////////////////////////////////7
+                player_name = int(re.search(r'\d+', player_name).group())
                 player_data = self.environment.players[player_name]
                 self.players[jid] = {
                     "jid": jid,

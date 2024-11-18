@@ -1,0 +1,2 @@
+from game_environment import Environment
+global environment_instance

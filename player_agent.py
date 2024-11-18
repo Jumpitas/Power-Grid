@@ -11,6 +11,7 @@ from game_environment import Environment
 
 # Only for testing!
 from objects import power_plant_socket
+import globals
 
 
 class PowerGridPlayerAgent(Agent):
@@ -31,7 +32,7 @@ class PowerGridPlayerAgent(Agent):
         # self.power_plant_market = []  # Latest power plant market info
         self.step = 2  # Current game step
 
-        environment_instance = Environment(None)
+        globals.environment_instance = Environment(None)
         self.get_inventory()
 
         '''
@@ -52,7 +53,7 @@ class PowerGridPlayerAgent(Agent):
             raise ValueError("Environment is not initialized.")
         '''
 
-        inventory = environment_instance.players[self.player_id]
+        inventory = globals.environment_instance.players[self.player_id]
         self.houses = inventory['houses']
         self.elektro = inventory['elektro']
         self.cities_owned = inventory['cities_owned']
@@ -75,7 +76,7 @@ class PowerGridPlayerAgent(Agent):
             raise ValueError("Environment is not initialized.")
         
         '''
-        environment_instance.players[self.player_id] = {
+        globals.environment_instance.players[self.player_id] = {
             'houses': self.houses,
             'elektro': self.elektro,
             'cities_owned': self.cities_owned,
