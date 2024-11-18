@@ -9,7 +9,20 @@ from objects import ResourceMarket, PowerPlantMarket
 environment_instance = None
 
 class Environment:
+    _instance = None  # Class-level private variable to hold the singleton instance
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Environment, cls).__new__(cls)
+            # Initialize the instance only once
+            cls._instance.__initialized = False
+        return cls._instance
+
+        # Original initialization logic
     def __init__(self, player_no):
+        if self.__initialized:  # Prevent re-initialization
+            return
+        self.__initialized = True
 
         # ---------------  Full dictionaries imported ----------------
         self.city_cashback = city_cashback
@@ -49,7 +62,7 @@ class Environment:
 
         # 2, 3) Create current available houses and elektro, current  based on number of players
         self.players = \
-            {f'player{i + 1}':
+            {(i + 1):
                  {'houses': 22,
                   'elektro': 50,
                   'cities_owned': [],
@@ -58,7 +71,9 @@ class Environment:
                   'power_plants': [],  # List of power plant numbers
                   'resources': {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0},
                   'has_bought_power_plant': False,
-                  'position': 0
+                  'position': 0,
+                  'connected_cities': 0
+
         } for i in range(player_no)}
 
         """

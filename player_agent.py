@@ -7,7 +7,6 @@ from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 import json
 
-# Import Environment if needed
 from game_environment import Environment
 
 # Only for testing!
@@ -18,23 +17,78 @@ class PowerGridPlayerAgent(Agent):
     def __init__(self, jid, password, player_id):
         super().__init__(jid, password)
         self.player_id = player_id
-        self.houses = 22  # Starting with 22 houses as per game rules
-        self.elektro = 50  # Starting money
-        self.cities = []  # List of city tags where the player has built
+        self.houses = 0  # Starting with 22 houses as per game rules
+        self.elektro = 0  # Starting money
+        self.cities_owned = []  # List of city tags where the player has houses
+        self.number_cities_owned = 0
         self.cities_powered = []  # List of city tags that the player can power
         self.power_plants = []  # List of power plant dictionaries
-        self.resources = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+        self.resources = {}
         self.has_bought_power_plant = False
         self.position = None  # Will be set during setup
         self.power_plant_market = []  # Latest power plant market info
         self.step = 2  # Current game step
         self.connected_cities = 0  # Number of connected cities
 
+        # self.power_plant_market = []  # Latest power plant market info
+        self.step = 2  # Current game step
+
+        environment_instance = Environment(None)
+        self.get_inventory()
+
+        '''
         # Initialize power plants for testing
         if self.player_id == 1:
             self.power_plants = [power_plant_socket[20]]
         else:
             self.power_plants = [power_plant_socket[10]]
+        '''
+
+    def get_inventory(self):
+        """
+        Updates the player's attributes with the current inventory from the global environment.
+        """
+        '''
+        global environment_instance ##############
+        if environment_instance is None:
+            raise ValueError("Environment is not initialized.")
+        '''
+
+        inventory = environment_instance.players[self.player_id]
+        self.houses = inventory['houses']
+        self.elektro = inventory['elektro']
+        self.cities_owned = inventory['cities_owned']
+        self.number_cities_owned = inventory['number_cities_owned']
+        self.cities_powered = inventory['cities_powered']
+        self.power_plants = inventory['power_plants']
+        self.resources = inventory['resources']
+        self.has_bought_power_plant = inventory['has_bought_power_plant']
+        self.position = inventory['position']
+        self.connected_cities = inventory['connected_cities']
+
+    def update_inventory(self):
+        """
+        Updates the global environment's inventory for this player
+        based on the current attributes.
+        """
+        '''
+        global environment_instance
+        if environment_instance is None:
+            raise ValueError("Environment is not initialized.")
+        
+        '''
+        environment_instance.players[self.player_id] = {
+            'houses': self.houses,
+            'elektro': self.elektro,
+            'cities_owned': self.cities_owned,
+            'number_cities_owned': self.number_cities_owned,
+            'cities_powered': self.cities_powered,
+            'power_plants': self.power_plants,
+            'resources': self.resources,
+            'has_bought_power_plant': self.has_bought_power_plant,
+            'position': self.position,
+            'connected_cities': self.connected_cities
+        }
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
