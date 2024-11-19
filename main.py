@@ -23,7 +23,7 @@ async def main():
     for i in range(1, num_players + 1):
         player_jid = f"player{i}@localhost"
         player_passwd = f"player{i}password"
-        player = PowerGridPlayerAgent(player_jid, player_passwd, player_id=i)
+        player = PowerGridPlayerAgent(player_jid, player_passwd, player_id=i, environment= globals.environment_instance)
         players.append(player)
 
     # start the player agents
