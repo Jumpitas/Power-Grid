@@ -9,9 +9,8 @@ import json
 from objects import PowerPlant
 from game_environment import Environment
 from rule_tables import *
-# Only for testing!
-from objects import power_plant_socket
 import globals
+import networkx as nx
 
 
 
@@ -280,9 +279,21 @@ class PowerGridPlayerAgent(Agent):
                         self.agent.update_inventory()
                         #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
-                elif phase == "phase5":
-                    # Phase 5 (Bureaucracy)
-                    print(f"Player {self.agent.player_id} acknowledges Phase 5 - Bureaucracy.")
+
+                    elif phase == "phase5":
+                        # Phase 5 (Bureaucracy)
+                        print(f"Player {self.agent.player_id} acknowledges Phase 5 - Bureaucracy.")
+                        # Decide how to power cities
+                        cities_powered = self.decide_cities_to_power()
+                        # Send the number of cities powered back to the manager
+                        response = Message(to=sender)
+                        response.body = json.dumps({
+                            "phase": "phase5",
+                            "action": "power_cities",
+                            "cities_powered": cities_powered
+                        })
+                        await self.send(response)
+                        print(f"Player {self.agent.player_id} decides to power {cities_powered} cities.")
 
                 elif phase == "game_over":
                     # Handle game over
@@ -372,7 +383,7 @@ class PowerGridPlayerAgent(Agent):
             max_affordable_bid = self.agent.elektro
             # Willing to bid up to the plant's evaluated value or our max affordable bid
             if current_bid < plant_value and current_bid + 1 <= max_affordable_bid:
-                return current_bid + 1
+                return current_bid + 3
             else:
                 # Can't afford to bid higher or the plant isn't worth it
                 return 0
@@ -475,37 +486,41 @@ class PowerGridPlayerAgent(Agent):
             return purchases
 
         def decide_cities_to_build(self, map_status):
-            """
-            Decide which cities to build in during Phase 4.
-            Ensures that:
-            - The player does not spend more Elektro than available.
-            - Cities are connected to the player's network.
-            - Cities are not fully occupied.
-            """
-            available_elektro = self.elektro
+            environment = globals.environment_instance
+            board_map = environment.map
+            available_elektro = self.agent.elektro
             cities_to_build = []
+
+            print(f"Player {self.agent.player_id} has {available_elektro} elektro.")
 
             for city, data in map_status.items():
                 # Skip cities the player already owns
                 if city in self.agent.cities_owned:
+                    print(f"Player {self.agent.player_id} already owns city {city}. Skipping.")
                     continue
 
                 # Skip cities that are not available (e.g., fully occupied)
-                if not self.environment.map.map.is_city_available(city, self):
+                if not board_map.is_city_available(city, environment.step):
+                    print(f"City {city} is not available. Skipping.")
                     continue
 
-                # Calculate connection cost to the player's network
-                connection_cost = self.environment.map.get_connection_cost(self.player_id, city)
-                if connection_cost is None or connection_cost + self.environment.building_cost[
-                    self.step] > available_elektro:
-                    # Skip if city is not connectable or too expensive
+                # Calculate connection cost
+                connection_cost = board_map.get_connection_cost(f"player{self.agent.player_id}@localhost", city)
+                building_cost = environment.building_cost[environment.step]
+                total_cost = connection_cost + building_cost
+
+                if total_cost > available_elektro:
+                    print(f"Player {self.agent.player_id} cannot afford city {city}. Skipping.")
                     continue
 
-                # Add city to build list and update available Elektro
+                # Add city to build list and deduct costs
                 cities_to_build.append(city)
-                available_elektro -= connection_cost + self.environment.building_cost[self.step]
+                available_elektro -= total_cost
+                self.agent.elektro -= total_cost  # Deduct from player's elektro
+                self.agent.cities_owned.append(city)  # Add city to owned cities
+                self.agent.update_inventory()  # Update inventory to reflect changes
+                print(f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}")
 
-                # Stop if no more Elektro is available
                 if available_elektro <= 0:
                     break
 
@@ -518,17 +533,61 @@ class PowerGridPlayerAgent(Agent):
             - Proximity to already owned cities.
             - Strategic growth potential.
             """
-            # Example strategy: prioritize cities near existing owned cities
+            environment = globals.environment_instance  # Access the global environment instance
+            board_map = environment.map
             proximity_score = 0
+
+            # Calculate proximity to owned cities
             for owned_city in self.agent.cities_owned:
-                if owned_city in self.Environment.map.connections.get(city_tag, []):
+                if nx.has_path(board_map.map, source=city_tag, target=owned_city):
                     proximity_score += 1
 
             # Factor in occupancy (fewer owners = higher priority)
-            occupancy_score = max(0, self.agent.step - len(city_data.get('owners', [])))
+            occupancy_score = max(0, environment.step - len(city_data.get('owners', [])))
 
             # Combine scores (weights can be adjusted based on strategy)
             return proximity_score + occupancy_score
+
+        def decide_cities_to_power(self):
+            """
+            Decides how many cities to power based on the player's resources, power plants, and owned cities.
+            """
+            available_resources = self.agent.resources.copy()
+            cities_powered = 0
+
+            for plant in self.agent.power_plants:
+                resource_needed = plant.resource_num
+                if not plant.resource_type:
+                    # Eco-friendly plant: powers cities without consuming resources
+                    cities_powered += plant.cities
+                elif plant.is_hybrid:
+                    # Hybrid plant: mix resources
+                    total_available = sum(available_resources[r] for r in plant.resource_type)
+                    if total_available >= resource_needed:
+                        for r in plant.resource_type:
+                            used = min(resource_needed, available_resources[r])
+                            available_resources[r] -= used
+                            resource_needed -= used
+                            if resource_needed == 0:
+                                break
+                        cities_powered += plant.cities
+                else:
+                    # Single-resource plant
+                    rtype = plant.resource_type[0]
+                    if available_resources[rtype] >= resource_needed:
+                        available_resources[rtype] -= resource_needed
+                        cities_powered += plant.cities
+
+                # Stop if we've powered all owned cities
+                if cities_powered >= len(self.agent.cities_owned):
+                    break
+
+            # Deduct resources from inventory
+            self.agent.resources = available_resources
+            self.agent.update_inventory()  # Update resources in the global inventory
+
+            print(f"Player {self.agent.player_id} powered {cities_powered} cities.")
+            return cities_powered
 
     async def setup(self):
         print(f"Player {self.player_id} agent starting...")

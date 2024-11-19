@@ -576,12 +576,25 @@ class GameManagerAgent(Agent):
 
         async def phase5(self):
             print("Phase 5: Bureaucracy")
-            # Players earn income and resources are replenished
-            for player in self.players.values():
-                income = self.calculate_income(player)
+            for player_id, player in self.players.items():
+                # Calculate cities powered
+                cities_powered = self.calculate_cities_powered(player)
+
+                # Calculate and add income
+                income_table = self.environment.city_cashback
+                if cities_powered < len(income_table):
+                    income = income_table[cities_powered]
+                else:
+                    income = income_table[-1]  # Max income
                 player["elektro"] += income
+
+                # Log the income earned
+                print(f"Player {player_id} powered {cities_powered} cities and earned {income} Elektro.")
+
+                # Consume resources used for powering cities
                 self.consume_resources(player)
 
+            # Resupply the resource market
             self.resupply_resource_market()
 
             # Update the power plant market
@@ -591,19 +604,16 @@ class GameManagerAgent(Agent):
             if self.check_game_end():
                 await self.end_game()
             else:
-                # Proceed to the next round
                 self.current_phase = "phase1"
                 self.round += 1
                 print(f"Starting Round {self.round}")
 
         def calculate_income(self, player):
-            # Calculate income based on the number of cities powered
             cities_powered = self.calculate_cities_powered(player)
             income_table = self.environment.city_cashback
-            if cities_powered < len(income_table):
-                return income_table[cities_powered]
-            else:
-                return income_table[-1]
+            income = income_table[cities_powered] if cities_powered < len(income_table) else income_table[-1]
+            print(f"Player {player['jid']} powers {cities_powered} cities and earns {income} elektro.")
+            return income
 
         def calculate_cities_powered(self, player):
             # Determine how many cities the player can power based on resources and power plants
@@ -627,26 +637,23 @@ class GameManagerAgent(Agent):
             return min(total_capacity, len(player["cities"]))
 
         def consume_resources(self, player):
-            # Deduct resources used for powering cities
             for plant in player["power_plants"]:
-                resource_types = plant.resource_type
                 resource_needed = plant.resource_num
-                if not resource_types:
-                    continue  # Eco plants consume no resources
+                if not plant.resource_type:
+                    continue  # Eco-friendly plants consume no resources
+                elif plant.is_hybrid:
+                    # For hybrid, consume resources from available types
+                    for rtype in plant.resource_type:
+                        available = player["resources"][rtype]
+                        consume = min(resource_needed, available)
+                        player["resources"][rtype] -= consume
+                        resource_needed -= consume
+                        if resource_needed == 0:
+                            break
                 else:
-                    if plant.is_hybrid:
-                        # For hybrid, consume resources from available types
-                        for rtype in resource_types:
-                            available = player["resources"][rtype]
-                            consume = min(available, resource_needed)
-                            player["resources"][rtype] -= consume
-                            resource_needed -= consume
-                            if resource_needed == 0:
-                                break
-                    else:
-                        rtype = resource_types[0]
-                        if player["resources"][rtype] >= resource_needed:
-                            player["resources"][rtype] -= resource_needed
+                    rtype = plant.resource_type[0]
+                    if player["resources"][rtype] >= resource_needed:
+                        player["resources"][rtype] -= resource_needed
 
         def resupply_resource_market(self):
             # Resupply resources based on the current step and number of players
@@ -704,52 +711,7 @@ class GameManagerAgent(Agent):
                 await self.send(msg)
             self.game_over = True
 
-        def calculate_building_cost(self, player, city_tag):
-            # Implement building cost calculation using the environment's building cost
-            city = self.environment.map.map.nodes.get(city_tag)
-            if city:
-                occupancy = len(city.get('owners', []))
-                if occupancy < self.current_step:
-                    building_cost = self.environment.building_cost[self.current_step]
-                    # For simplicity, assume connection cost is zero
-                    return building_cost
-            return float('inf')
 
-        def is_city_available(self, city_tag, player):
-            city = self.environment.map.map.nodes.get(city_tag)
-            if city:
-                occupancy = len(city.get('owners', []))
-                if occupancy < self.current_step:
-                    return True
-            return False
-
-        def determine_player_order(self):
-            # Sort players based on number of cities connected and largest power plant
-            players_list = list(self.players.values())
-
-            # Sort by number of cities first, descending
-            # Then by largest power plant number, descending
-            # If a player has no power plants, it treats largest power plant as 0
-            def largest_power_plant_num(player):
-                if player["power_plants"]:
-                    return max(pp.min_bid for pp in player["power_plants"])
-                return 0
-
-            players_list.sort(key=lambda p: (-len(p["cities"]), -largest_power_plant_num(p)))
-            return players_list
-
-        def serialize_power_plant(self, power_plant):
-            """
-            Serializes a PowerPlant object into a dictionary for sending via message.
-            """
-            return {
-                "min_bid": power_plant.min_bid,
-                "cities": power_plant.cities,
-                "resource_type": power_plant.resource_type,
-                "resource_num": power_plant.resource_num,
-                "is_hybrid": power_plant.is_hybrid,
-                "is_step": power_plant.is_step
-            }
 
     def __init__(self, jid, password, player_jids):
         super().__init__(jid, password)

@@ -350,3 +350,17 @@ class BoardMap:
                 logging.info(f"Game has ended. Winner: {player} with {count} cities.")
                 return True, player
         return False, ""
+
+    def is_city_available(self, city_tag, step):
+        """
+        Check if a city is available for building.
+        A city is available if:
+        - It exists in the map.
+        - Its occupancy is less than the step limit.
+        """
+        if city_tag not in self.map.nodes:
+            logging.error(f"City with tag '{city_tag}' not found.")
+            return False
+
+        owners = self.map.nodes[city_tag].get('owners', [])
+        return len(owners) <= 2
