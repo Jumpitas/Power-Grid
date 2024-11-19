@@ -163,8 +163,6 @@ class Environment:
 
         print(df) # players
 
-        sleep(3)
-
     def update_cities_owned(self, playerID, city):
         """
         :param playerID: playerX
@@ -216,9 +214,9 @@ class Environment:
         print(f"Initial Future Market: {self.power_plant_market.future_market}")
         print(f"Initial Deck: {self.power_plant_market.deck}")
 
-os.system('clear')
-env_test = Environment(3)
-env_test.print_environment()
+#os.system('clear')
+#env_test = Environment(3)
+#env_test.print_environment()
 
 
 
