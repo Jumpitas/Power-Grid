@@ -178,10 +178,24 @@ class PowerPlantMarket:
         self._initialize_markets()
 
     def __repr__(self):
-        return (f"PowerPlantMarket(\n"
-                f"  Current Market: {self.current_market},\n"
-                f"  Future Market: {self.future_market},\n"
-                f"  Deck Size: {len(self.deck)}\n)")
+        def format_powerplant(pp):
+            # Format each PowerPlant's details as a readable string
+            resource_str = ", ".join(pp.resource_type)  # Combine the resources into a single string
+            return (f"  Min Bid: {pp.min_bid}, "
+                    f"Cities: {pp.cities}, "
+                    f"Resources: {resource_str}, "
+                    f"Resource Num: {pp.resource_num}, "
+                    f"Hybrid: {pp.is_hybrid}, "
+                    f"Step: {pp.is_step}")
+
+        # Format current market and future market
+        current_market_str = "\n".join([format_powerplant(pp) for pp in self.current_market])
+        future_market_str = "\n".join([format_powerplant(pp) for pp in self.future_market])
+
+        # formatted string representation
+        return (f"Current Market:\n{current_market_str},\n\n"
+                f"Future Market:\n{future_market_str},\n\n"
+                f"Deck Size: {len(self.deck)}")
 
     def _initialize_markets(self):
         """

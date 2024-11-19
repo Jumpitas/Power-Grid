@@ -1,9 +1,24 @@
+import os
 from time import sleep
 import random
+
+# import pandas and change settings for display the status
+import pandas as pd
+pd.set_option('display.max_rows', None)  #
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
 
 from map_graph import BoardMap, citiesUS, edgesUS  # map class
 from rule_tables import *
 from objects import ResourceMarket, PowerPlantMarket
+
+# formatting methods
+def clear_screen():
+    print("\n" * 100)  # os.system ain t working :(
+
+def split_parts():
+    print("\n" + "-" * 30 + "\n")
 
 # Global pointer to the environment instance
 environment_instance = None
@@ -114,58 +129,120 @@ class Environment:
         # precisa de revisao esta parte, pq nao e bem o mercado so
         # e preciso ver se a carta step3 ta bem programada
 
-        def update_cities_owned(self, playerID, city):
-            """
-            :param playerID: playerX
-            :param city: the city tag
+    #sleep(1)
+    #os.environ['TERM'] = 'xterm'
+    #os.system('clear')
+    #print(" -> ".join(map(str, self.order_players)))
 
-            Already considering the step limit regarding the max number of owners per city.
+    def print_environment(self):
+        # prints 100 blank lines while os.system('clear') not working
+        clear_screen()
 
-            :updates:
-               - the map graph instance inside this class, regarding the tag ownership
-               - the players dictionary, regarding
-                   - the list with the owned cities
-                   - incrementing the number of cities owned by one
-                   - the number of houses (the player places the house there)
-                   - the elektro amount (-10), being the price to pay to the bank
+        ################## Resource Market Status ##################
 
-            :returns:
-                - 0 if it updates successfully with no errors
-                - 1 if it doesn't find the city tag in the graph
-                - 2 if the limit of city owners if crossed
-                -
-            """
-            cities_list = list(self.map.get_nodes().keys())
-            if city not in cities_list:
-                return 1 # tag misquoted
+        print("Current Resource Market Status: \n")
+        print(f"{'Type':<10} | {'Quantity'}")  # Header with left alignment for 'Type' and right for 'Quantity'
+        print("-" * 25)  # Separator line
 
-            l = self.map.get_current_owners(city)
-            if len(l)>=self.step:
-                return 2 # cannot build there
+        # Print each resource and its quantity in a formatted way
+        for resource, quantity in self.resource_market.in_market.items():
+            print(f"{resource:<10} | {quantity}")
 
-            else:
-                self.map.update_owner(playerID, city)
-                self.players[playerID]['cities'].append(city)
-                self.players[playerID]['number_cities_owned'] += 1
-                self.players[playerID]['houses'] -= 1
-                self.players[playerID]['elektro'] -= 10
+        split_parts()
+        ###################  Power Plant Market  ####################
+        print("Current Power Plant Market Status: \n")
+        print(repr(self.power_plant_market))
 
-                return 0
+        split_parts()
+        ################# Player's Inventory Table ##################
+        data = {
+            player_id: {
+                # general stuff
+                'Houses': player_data['houses'],
+                'Elektro': player_data['elektro'],
 
-        def update_cities_powered(self, playerID, city):
-            """
-            :param playerID: playerX
-            :param city: the city tag
-            :updates:
-               - the players dictionary, regarding
-                   - the list with the powered cities
-                    - powerplant markets?????????
-            """
+                # energy related
+                'Power_plants': player_data['power_plants'],
+                'Coal': player_data['resources']['coal'],
+                'Oil': player_data['resources']['oil'],
+                'Garbage': player_data['resources']['garbage'],
+                'Uranium': player_data['resources']['uranium'],
+                # 'has_bought_power_plant': player_data['has_bought_power_plant'],
+
+                # city management
+                'Cities_owned': player_data['cities_owned'],
+                # 'number_cities_owned': player_data['number_cities_owned'],
+                'Cities_powered': player_data['cities_powered'],
+
+                # 'position': player_data['position'],
+                # 'connected_cities': player_data['connected_cities'],
+            }
+            for player_id, player_data in self.players.items()
+        }
+
+        df = pd.DataFrame.from_dict(data, orient='index')
+        df.index.name = 'Player'
+
+        print(df) # players
+
+        sleep(4)
+
+    def update_cities_owned(self, playerID, city):
+        """
+        :param playerID: playerX
+        :param city: the city tag
+
+        Already considering the step limit regarding the max number of owners per city.
+
+        :updates:
+           - the map graph instance inside this class, regarding the tag ownership
+           - the players dictionary, regarding
+               - the list with the owned cities
+               - incrementing the number of cities owned by one
+               - the number of houses (the player places the house there)
+               - the elektro amount (-10), being the price to pay to the bank
+
+        :returns:
+            - 0 if it updates successfully with no errors
+            - 1 if it doesn't find the city tag in the graph
+            - 2 if the limit of city owners if crossed
+            -
+        """
+        cities_list = list(self.map.get_nodes().keys())
+        if city not in cities_list:
+            return 1 # tag misquoted
+
+        l = self.map.get_current_owners(city)
+        if len(l)>=self.step:
+            return 2 # cannot build there
+
+        else:
+            self.map.update_owner(playerID, city)
+            self.players[playerID]['cities'].append(city)
+            self.players[playerID]['number_cities_owned'] += 1
+            self.players[playerID]['houses'] -= 1
+            self.players[playerID]['elektro'] -= 10
+
+            return 0
+
+    def update_cities_powered(self, playerID, city):
+        """
+        :param playerID: playerX
+        :param city: the city tag
+        :updates:
+           - the players dictionary, regarding
+               - the list with the powered cities
+                - powerplant markets?????????
+        """
         print(f"Initial Current Market: {self.power_plant_market.current_market}")
         print(f"Initial Future Market: {self.power_plant_market.future_market}")
         print(f"Initial Deck: {self.power_plant_market.deck}")
 
+
 env_test = Environment(3)
+# env_test.print_environment()
+
+
 
 
 
