@@ -369,17 +369,9 @@ class PowerGridPlayerAgent(Agent):
             if not power_plants:
                 return None
 
-            def plant_value(pp):
-                return pp.cities
-
-            plant_to_discard = min(power_plants, key=plant_value)
-            return plant_to_discard.min_bid if hasattr(plant_to_discard, 'min_bid') else None
-
-            def plant_value(pp):
-                return pp.get('cities', 0)
-
-            plant_to_discard = min(power_plants, key=plant_value)
-            return plant_to_discard.get('min_bid', None)
+            # Uses simple function to evaluate plants based on min_bid value
+            plant_to_discard = min(power_plants, key=lambda plant: plant.min_bid)
+            return plant_to_discard.min_bid
 
         def decide_resources_to_buy(self, resource_market):
             """

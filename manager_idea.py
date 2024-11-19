@@ -79,7 +79,7 @@ class GameManagerAgent(Agent):
                 self.player_id_to_jid[player_id] = jid
 
                 # Ensure the environment has data for this player_id
-                if player_id not in self.environment.players:
+                if player_id not in self.environment.players.keys():
                     raise KeyError(f"Player ID {player_id} not found in environment.")
 
                 player_data = self.environment.players[player_id]
