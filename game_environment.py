@@ -91,16 +91,6 @@ class Environment:
 
         } for i in range(player_no)}
 
-        """
-        print("Players instance created.\nCurrent state: ")
-        for player, stats in self.players.items():
-            print(f"{player}:")
-            for stat, value in stats.items():
-                print(f"  {stat.capitalize()}: {value}")
-            print()
-        sleep(1)
-        """
-
         # 4) Determine starting player order
         self.order_players = []
         for player in self.players:
@@ -112,27 +102,14 @@ class Environment:
         for position, player_name in enumerate(self.order_players, start=1):
             self.players[player_name]['position'] = position
 
-        """
-        print("Randomly generated player order: ", self.order_players)
-        print("Check if houses was updated for the players: ", self.players['player1']['houses']) # should be 21
-        """
-
         # 5) Create the Resource Market
         self.resource_market = ResourceMarket() # ver os comentarios la
 
         # 6) Corresponds to the resource bank variable on the objects.py
-
         # 7) Corresponds to the 3 variable defined above (dictionarynception)
 
-        # 8) 9)
+        # 8) 9) Create the Power Plant Market
         self.power_plant_market = PowerPlantMarket(player_no)
-        # precisa de revisao esta parte, pq nao e bem o mercado so
-        # e preciso ver se a carta step3 ta bem programada
-
-    #sleep(1)
-    #os.environ['TERM'] = 'xterm'
-    #os.system('clear')
-    #print(" -> ".join(map(str, self.order_players)))
 
     def print_environment(self):
         # prints 100 blank lines while os.system('clear') not working
@@ -163,7 +140,7 @@ class Environment:
                 'Elektro': player_data['elektro'],
 
                 # energy related
-                'Power_plants': player_data['power_plants'],
+                'Power_plants': [repr(plant) for plant in player_data['power_plants']],
                 'Coal': player_data['resources']['coal'],
                 'Oil': player_data['resources']['oil'],
                 'Garbage': player_data['resources']['garbage'],

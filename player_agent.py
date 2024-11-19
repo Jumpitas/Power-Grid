@@ -97,10 +97,10 @@ class PowerGridPlayerAgent(Agent):
     def print_status(self, phase=-1, round_no=-1, turn=-1, order=[-1,-2,-3], subphase=None):
         print(f"The current phase is {phase} and sub phase is {subphase}")
         print(f"It's the player {turn}'s turn: ")
-        print(f"Order for the round {round_no}: {edit_order(order)}")
-        split_parts()
+        print(f"Order for the round {round_no}: {edit_order(order)}\n")
+
         globals.environment_instance.print_environment()
-        sleep(3)
+        sleep(1)
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
@@ -110,7 +110,6 @@ class PowerGridPlayerAgent(Agent):
             msg = await self.receive(timeout=30)
             if msg:
                 sender = str(msg.sender).split('/')[0]
-
                 # Parse the JSON content of the message
                 try:
                     data = json.loads(msg.body)
@@ -127,7 +126,7 @@ class PowerGridPlayerAgent(Agent):
                     self.agent.position = player_order
                     self.agent.update_inventory()
                     print(f"Player {self.agent.player_id} received setup information. Position: {player_order}")
-                    self.agent.print_status()
+
 
                 elif phase == "phase1":
                     # Handle player order notification
@@ -135,7 +134,6 @@ class PowerGridPlayerAgent(Agent):
                     self.agent.position = player_order
                     self.agent.update_inventory()
                     print(f"Player {self.agent.player_id} is in position {player_order}")
-                    self.agent.print_status()
 
 
                 elif phase == "phase2":
@@ -154,7 +152,6 @@ class PowerGridPlayerAgent(Agent):
                                 choice_msg.body = json.dumps(choice_data)
                                 await self.send(choice_msg)
                                 print(f"Player {self.agent.player_id} decides to pass on starting an auction.")
-                                self.agent.print_status()
 
                             else:
                                 chosen_plant_number = self.choose_power_plant_to_auction(power_plant_market)
@@ -167,7 +164,7 @@ class PowerGridPlayerAgent(Agent):
                                     choice_msg.body = json.dumps(choice_data)
                                     await self.send(choice_msg)
                                     print(f"Player {self.agent.player_id} chooses to auction power plant {chosen_plant_number}.")
-                                    self.agent.print_status()
+
 
                                 else:
                                     # Cannot afford any power plant, so pass
@@ -178,7 +175,7 @@ class PowerGridPlayerAgent(Agent):
                                     choice_msg.body = json.dumps(choice_data)
                                     await self.send(choice_msg)
                                     print(f"Player {self.agent.player_id} cannot afford any power plant and passes.")
-                                    self.agent.print_status()
+
 
                         else:
                             # Must choose a power plant (first round)
@@ -191,7 +188,7 @@ class PowerGridPlayerAgent(Agent):
                             choice_msg.body = json.dumps(choice_data)
                             await self.send(choice_msg)
                             print(f"Player {self.agent.player_id} must auction power plant {chosen_plant_number} (first round).")
-                            self.agent.print_status()
+
 
 
                     elif action == "initial_bid":
@@ -207,7 +204,7 @@ class PowerGridPlayerAgent(Agent):
                         bid_msg.body = json.dumps(bid_data)
                         await self.send(bid_msg)
                         print(f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
-                        self.agent.print_status()
+
 
                     elif action == "bid":
                         # Receive bid request
@@ -228,7 +225,7 @@ class PowerGridPlayerAgent(Agent):
                         else:
                             pass
                             #print(f"Player {self.agent.player_id} passes on bidding.")
-                        self.agent.print_status()
+
 
 
                     elif action == "discard_power_plant":
@@ -243,7 +240,7 @@ class PowerGridPlayerAgent(Agent):
                         discard_msg.body = json.dumps(discard_data)
                         await self.send(discard_msg)
                         #print(f"Player {self.agent.player_id} discards power plant {discard_number}.")
-                        self.agent.print_status()
+
 
 
                     elif action == "auction_result":
@@ -262,12 +259,12 @@ class PowerGridPlayerAgent(Agent):
                                 self.agent.update_inventory()
                                 print("Bid ammount: ", bid)
                                 print(f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
-                                self.agent.print_status()
+
 
                                 #print(f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
                         else:
                             print(f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
-                            self.agent.print_status()
+
 
                             #print(f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
 
