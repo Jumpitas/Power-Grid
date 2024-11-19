@@ -17,6 +17,7 @@ class PowerPlant:
         self.storage = {rtype: 0 for rtype in resource_type}
         self.available_storage = resource_num * 2 if resource_type else 0
 
+    '''
     def __repr__(self):
         return (f"PowerPlant("
                 f"min_bid={self.min_bid}, "
@@ -25,6 +26,11 @@ class PowerPlant:
                 f"resource_num={self.resource_num}, "
                 f"is_hybrid={self.is_hybrid}, "
                 f"is_step={self.is_step})")
+    '''
+
+    def __repr__(self):
+        #return (f"Price: {self.min_bid}, Powering Capacity: {self.cities}, Resource Type: {self.resource_type}")
+        return (f"({self.min_bid}$,{self.cities}cap,{self.resource_type})") # price, capacity, type
 
     def store_resources(self, resource, amount):
         """Stores a given amount of a resource if space is available in the power plant's storage."""
