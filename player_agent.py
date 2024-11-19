@@ -291,11 +291,14 @@ class PowerGridPlayerAgent(Agent):
             await asyncio.sleep(1)  # Yield control to event loop
 
         # Decision-making methods
-        def should_pass(self):
-            # Pass if we don't need more power plants or can't afford them
+        def should_pass(self, power_plant_market):
+            """
+            Decide whether to pass based on the current power plant market.
+            """
             need_power_plant = len(self.agent.power_plants) < 3
             can_afford_any = any(
-                pp.get('min_bid', float('inf')) <= self.agent.elektro for pp in self.agent.power_plant_market)
+                pp.min_bid <= self.agent.elektro for pp in power_plant_market
+            )
             return not need_power_plant or not can_afford_any
 
         def choose_power_plant_to_auction(self, market):
