@@ -8,10 +8,11 @@ from spade.message import Message
 import json
 from objects import PowerPlant
 from game_environment import Environment
-
+from rule_tables import *
 # Only for testing!
 from objects import power_plant_socket
 import globals
+
 
 
 class PowerGridPlayerAgent(Agent):
@@ -30,7 +31,6 @@ class PowerGridPlayerAgent(Agent):
         # Removed: self.power_plant_market as it's not needed as an attribute
         self.step = 2  # Current game step
         self.connected_cities = 0  # Number of connected cities
-
         globals.environment_instance = Environment(None)
         self.get_inventory()
 
@@ -404,11 +404,33 @@ class PowerGridPlayerAgent(Agent):
 
         def decide_resources_to_buy(self, resource_market):
             """
-            Decide which resources to buy based on the power plants owned.
+            Decide which resources to buy based on the power plants owned and the price table.
+            Ensures that the player does not spend more Elektro than they have.
             """
             purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+
+            def get_resource_cost(resource_type, amount_to_buy, resource_market):
+                """
+                Calculate the total cost for a given resource type and amount using the price table.
+                """
+                total_cost = 0
+                available_units = resource_market.get(resource_type, 0)
+
+                if resource_type == "uranium":
+                    # Uranium has a direct mapping of quantity to price
+                    for unit in range(1, amount_to_buy + 1):
+                        if available_units >= unit:
+                            total_cost += price_table["uranium"].get(unit, float('inf'))
+                else:
+                    # Coal, oil, and garbage have ranges for pricing
+                    for unit in range(1, amount_to_buy + 1):
+                        for range_key, price in price_table[resource_type].items():
+                            if isinstance(range_key, tuple) and unit in range_key:
+                                total_cost += price
+                                break
+                return total_cost
+
             for plant in self.agent.power_plants:
-                # Access attributes directly
                 resource_types = plant.resource_type
                 resource_needed = plant.resource_num
                 is_hybrid = plant.is_hybrid
@@ -421,13 +443,16 @@ class PowerGridPlayerAgent(Agent):
                     for rtype in resource_types:
                         available = resource_market.get(rtype, 0)
                         if available > 0:
-                            # Purchase as much as possible (up to resource_needed)
-                            amount_to_buy = min(available, resource_needed)
+                            # Determine max affordable quantity
+                            max_affordable = self.agent.elektro // get_resource_cost(rtype, 1, resource_market)
+                            amount_to_buy = min(available, resource_needed, max_affordable)
+                            total_cost = get_resource_cost(rtype, amount_to_buy, resource_market)
 
-                            if self.agent.elektro > amount_to_buy:
+                            if total_cost <= self.agent.elektro:
                                 purchases[rtype] += amount_to_buy
                                 resource_needed -= amount_to_buy
-                                self.agent.elektro -= amount_to_buy * 1  # Simplified cost
+                                self.agent.elektro -= total_cost
+
                             if resource_needed <= 0:
                                 break
                 else:
@@ -435,22 +460,75 @@ class PowerGridPlayerAgent(Agent):
                     rtype = resource_types[0]
                     available = resource_market.get(rtype, 0)
                     if available > 0:
-                        amount_to_buy = min(available, resource_needed)
+                        # Determine max affordable quantity
+                        max_affordable = self.agent.elektro // get_resource_cost(rtype, 1, resource_market)
+                        amount_to_buy = min(available, resource_needed, max_affordable)
+                        total_cost = get_resource_cost(rtype, amount_to_buy, resource_market)
 
-                        if self.agent.elektro > amount_to_buy:
+                        if total_cost <= self.agent.elektro:
                             purchases[rtype] += amount_to_buy
                             resource_needed -= amount_to_buy
-                            self.agent.elektro -= amount_to_buy * 1  # Simplified cost
+                            self.agent.elektro -= total_cost
+
+            # Update inventory to reflect the purchases
             self.agent.update_inventory()
             return purchases
 
         def decide_cities_to_build(self, map_status):
-            # Simple logic: attempt to build in the first city that is not yet owned by this agent
+            """
+            Decide which cities to build in during Phase 4.
+            Ensures that:
+            - The player does not spend more Elektro than available.
+            - Cities are connected to the player's network.
+            - Cities are not fully occupied.
+            """
+            available_elektro = self.elektro
+            cities_to_build = []
+
             for city, data in map_status.items():
-                if city not in self.agent.cities_owned:
-                    # Assume we can afford it for now and city is within step occupancy
-                    return [city]
-            return []
+                # Skip cities the player already owns
+                if city in self.agent.cities_owned:
+                    continue
+
+                # Skip cities that are not available (e.g., fully occupied)
+                if not self.environment.map.map.is_city_available(city, self):
+                    continue
+
+                # Calculate connection cost to the player's network
+                connection_cost = self.environment.map.get_connection_cost(self.player_id, city)
+                if connection_cost is None or connection_cost + self.environment.building_cost[
+                    self.step] > available_elektro:
+                    # Skip if city is not connectable or too expensive
+                    continue
+
+                # Add city to build list and update available Elektro
+                cities_to_build.append(city)
+                available_elektro -= connection_cost + self.environment.building_cost[self.step]
+
+                # Stop if no more Elektro is available
+                if available_elektro <= 0:
+                    break
+
+            return cities_to_build
+
+        def evaluate_city_priority(self, city_tag, city_data):
+            """
+            Evaluate a city's priority for building.
+            Factors:
+            - Proximity to already owned cities.
+            - Strategic growth potential.
+            """
+            # Example strategy: prioritize cities near existing owned cities
+            proximity_score = 0
+            for owned_city in self.agent.cities_owned:
+                if owned_city in self.Environment.map.connections.get(city_tag, []):
+                    proximity_score += 1
+
+            # Factor in occupancy (fewer owners = higher priority)
+            occupancy_score = max(0, self.agent.step - len(city_data.get('owners', [])))
+
+            # Combine scores (weights can be adjusted based on strategy)
+            return proximity_score + occupancy_score
 
     async def setup(self):
         print(f"Player {self.player_id} agent starting...")

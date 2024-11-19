@@ -330,10 +330,4 @@ power_plant_plug = [
     PowerPlant(13,1)
 ]
 
-# Resource bank initialization
-resource_bank = {
-    "coal": 24,
-    "oil": 24,
-    "garbage": 24,
-    "uranium": 12
-}
+
