@@ -113,6 +113,10 @@ class PowerGridPlayerAgent(Agent):
         for plant in self.power_plants:
             resource_needed = plant.resource_num
 
+            # Stop if we've powered all owned cities
+            if cities_powered >= len(self.cities_owned):
+                break
+
             # If it's free, just power
             if not plant.resource_type:
                 # Eco-friendly plant: powers cities without consuming resources
@@ -132,7 +136,11 @@ class PowerGridPlayerAgent(Agent):
                             resource_needed -= used
                             if resource_needed == 0:
                                 break
+
                     cities_powered += plant.cities
+                    # Stop if we've powered all owned cities
+                    if cities_powered >= len(self.cities_owned):
+                        break
                     # Record consumed resources
                     for r, amt in consumed.items():
                         resources_consumed[r] = resources_consumed.get(r, 0) + amt
@@ -143,10 +151,6 @@ class PowerGridPlayerAgent(Agent):
                     available_resources[rtype] -= resource_needed
                     cities_powered += plant.cities
                     resources_consumed[rtype] = resources_consumed.get(rtype, 0) + resource_needed
-
-            # Stop if we've powered all owned cities
-            if cities_powered >= len(self.cities_owned):
-                break
 
         if cities_powered > len(self.cities_owned):
             cities_powered = len(self.cities_owned)
@@ -609,7 +613,7 @@ class PowerGridPlayerAgent(Agent):
                             amount_to_buy = min(available, resource_needed, max_affordable)
                             total_cost = get_resource_cost(rtype, amount_to_buy, resource_market)
 
-                            if total_cost <= self.agent.elektro:
+                            if total_cost <= self.agent.elektro * 0.6:
                                 purchases[rtype] += amount_to_buy
                                 resource_needed -= amount_to_buy
                                 self.agent.elektro -= total_cost
@@ -626,7 +630,7 @@ class PowerGridPlayerAgent(Agent):
                         amount_to_buy = min(available, resource_needed, max_affordable)
                         total_cost = get_resource_cost(rtype, amount_to_buy, resource_market)
 
-                        if total_cost <= self.agent.elektro:
+                        if total_cost <= self.agent.elektro * 0.6:
                             purchases[rtype] += amount_to_buy
                             resource_needed -= amount_to_buy
                             self.agent.elektro -= total_cost
@@ -663,13 +667,14 @@ class PowerGridPlayerAgent(Agent):
                     print(f"Player {self.agent.player_id} cannot afford city {city}. Skipping.")
                     continue
 
-                # Add city to build list and deduct costs
-                cities_to_build.append(city)
-                available_elektro -= total_cost
-                #self.agent.elektro -= total_cost  # Deduct from player's elektro
-                #self.agent.cities_owned.append(city)  # Add city to owned cities
-                self.agent.update_inventory()  # Update inventory to reflect changes
-                print(f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}")
+                if city not in self.agent.cities_owned:
+                    # Add city to build list and deduct costs
+                    cities_to_build.append(city)
+                    available_elektro -= total_cost
+                    #self.agent.elektro -= total_cost  # Deduct from player's elektro
+                    #self.agent.cities_owned.append(city)  # Add city to owned cities
+                    self.agent.update_inventory()  # Update inventory to reflect changes
+                    print(f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}")
 
                 if available_elektro <= 0:
                     break
