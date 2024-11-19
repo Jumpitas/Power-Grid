@@ -75,6 +75,34 @@ class PowerPlant:
                 return {}
         return used_resources
 
+    def to_dict(self):
+        """
+        Serializes the PowerPlant object to a dictionary.
+        """
+        return {
+            'min_bid': self.min_bid,
+            'cities': self.cities,
+            'resource_type': self.resource_type,
+            'resource_num': self.resource_num,
+            'is_hybrid': self.is_hybrid,
+            'is_step': self.is_step
+            # Optionally, include storage and available_storage if needed
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """
+        Deserializes a dictionary to a PowerPlant object.
+        """
+        return PowerPlant(
+            min_bid=data.get('min_bid', 0),
+            cities=data.get('cities', 0),
+            resource_type=data.get('resource_type', []),
+            resource_num=data.get('resource_num', 0),
+            is_hybrid=data.get('is_hybrid', False),
+            is_step=data.get('is_step', False)
+        )
+
 class ResourceMarket:
     def __init__(self, coal=24, oil=24, garbage=24, uranium=12):
         # Maximum capacities for each resource in the market
