@@ -1,12 +1,17 @@
 # player_agent.py
 
 import asyncio
-import json
+import random
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
+import json
 from objects import PowerPlant
 from game_environment import Environment
+
+# Only for testing!
+from objects import power_plant_socket
+
 
 class PowerGridPlayerAgent(Agent):
     """
@@ -443,181 +448,181 @@ class PowerGridPlayerAgent(Agent):
                 print(f"Player {self.agent.player_id} has lost. Winner: {winner} with {final_elektro} Elektro.")
             await self.agent.stop()
 
-    # Decision-making methods are part of the PowerGridPlayerAgent class
+    # Decision-making methods are moved outside the ReceivePhaseBehaviour for clarity
 
-    def should_pass(self, power_plant_market):
-        """
-        Decide whether to pass based on the current power plant market.
+        def should_pass(self, power_plant_market):
+            """
+            Decide whether to pass based on the current power plant market.
 
-        Args:
-            power_plant_market (list): List of available PowerPlant objects.
+            Args:
+                power_plant_market (list): List of available PowerPlant objects.
 
-        Returns:
-            bool: True if the player should pass, False otherwise.
-        """
-        need_power_plant = len(self.power_plants) < 3
-        can_afford_any = any(pp.min_bid <= self.elektro for pp in power_plant_market)
-        return not need_power_plant or not can_afford_any
+            Returns:
+                bool: True if the player should pass, False otherwise.
+            """
+            need_power_plant = len(self.power_plants) < 3
+            can_afford_any = any(pp.min_bid <= self.elektro for pp in power_plant_market)
+            return not need_power_plant or not can_afford_any
 
-    def choose_power_plant_to_auction(self, market):
-        """
-        Choose the best affordable power plant to auction based on strategic evaluation.
+        def choose_power_plant_to_auction(self, market):
+            """
+            Choose the best affordable power plant to auction based on strategic evaluation.
 
-        Args:
-            market (list): List of available PowerPlant objects.
+            Args:
+                market (list): List of available PowerPlant objects.
 
-        Returns:
-            int or None: The min_bid of the chosen power plant, or None if no affordable plant is found.
-        """
-        if not market:
-            print(f"Player {self.player_id} finds no available power plants to auction.")
-            return None
+            Returns:
+                int or None: The min_bid of the chosen power plant, or None if no affordable plant is found.
+            """
+            if not market:
+                print(f"Player {self.player_id} finds no available power plants to auction.")
+                return None
 
-        affordable_plants = [pp for pp in market if pp.min_bid <= self.elektro]
-        if not affordable_plants:
-            print(f"Player {self.player_id} cannot afford any power plant.")
-            return None
+            affordable_plants = [pp for pp in market if pp.min_bid <= self.elektro]
+            if not affordable_plants:
+                print(f"Player {self.player_id} cannot afford any power plant.")
+                return None
 
-        # Strategy: pick the plant that provides the best ratio of cities powered per Elektro
-        best_plant = max(affordable_plants, key=lambda pp: pp.cities / pp.min_bid if pp.min_bid > 0 else 0)
-        return best_plant.min_bid if hasattr(best_plant, 'min_bid') else None
+            # Strategy: pick the plant that provides the best ratio of cities powered per Elektro
+            best_plant = max(affordable_plants, key=lambda pp: pp.cities / pp.min_bid if pp.min_bid > 0 else 0)
+            return best_plant.min_bid if hasattr(best_plant, 'min_bid') else None
 
-    def decide_initial_bid(self, base_min_bid, power_plant):
-        """
-        Decide the initial bid based on the value of the power plant.
+        def decide_initial_bid(self, base_min_bid, power_plant):
+            """
+            Decide the initial bid based on the value of the power plant.
 
-        Args:
-            base_min_bid (int): The base minimum bid.
-            power_plant (PowerPlant): The power plant being bid on.
+            Args:
+                base_min_bid (int): The base minimum bid.
+                power_plant (PowerPlant): The power plant being bid on.
 
-        Returns:
-            int: The bid amount.
-        """
-        plant_value = self.evaluate_power_plant(power_plant)
-        max_bid = int(self.elektro * 0.6)
-        bid = min(max_bid, base_min_bid)
-        return bid if bid >= base_min_bid else 0
+            Returns:
+                int: The bid amount.
+            """
+            plant_value = self.evaluate_power_plant(power_plant)
+            max_bid = int(self.elektro * 0.6)
+            bid = min(max_bid, base_min_bid)
+            return bid if bid >= base_min_bid else 0
 
-    def decide_bid_amount(self, current_bid, power_plant):
-        """
-        Decide whether to bid higher based on the plant's value and available Elektro.
+        def decide_bid_amount(self, current_bid, power_plant):
+            """
+            Decide whether to bid higher based on the plant's value and available Elektro.
 
-        Args:
-            current_bid (int): The current highest bid.
-            power_plant (PowerPlant): The power plant being bid on.
+            Args:
+                current_bid (int): The current highest bid.
+                power_plant (PowerPlant): The power plant being bid on.
 
-        Returns:
-            int: The new bid amount, or 0 to pass.
-        """
-        plant_value = self.evaluate_power_plant(power_plant)
-        max_affordable_bid = self.elektro
+            Returns:
+                int: The new bid amount, or 0 to pass.
+            """
+            plant_value = self.evaluate_power_plant(power_plant)
+            max_affordable_bid = self.elektro
 
-        if current_bid < plant_value and (current_bid + 1) <= max_affordable_bid:
-            return current_bid + 1
-        else:
-            return 0
+            if current_bid < plant_value and (current_bid + 1) <= max_affordable_bid:
+                return current_bid + 1
+            else:
+                return 0
 
-    def evaluate_power_plant(self, power_plant):
-        """
-        Evaluate the power plant's worth to the agent.
+        def evaluate_power_plant(self, power_plant):
+            """
+            Evaluate the power plant's worth to the agent.
 
-        Args:
-            power_plant (PowerPlant): The power plant to evaluate.
+            Args:
+                power_plant (PowerPlant): The power plant to evaluate.
 
-        Returns:
-            int: The evaluated value of the power plant.
-        """
-        if not power_plant:
-            return 0
+            Returns:
+                int: The evaluated value of the power plant.
+            """
+            if not power_plant:
+                return 0
 
-        cities_powered = power_plant.cities
-        resource_types = power_plant.resource_type
-        is_eco = len(resource_types) == 0
-        value = cities_powered * 10
-        if is_eco:
-            value += 20
-        return value
+            cities_powered = power_plant.cities
+            resource_types = power_plant.resource_type
+            is_eco = len(resource_types) == 0
+            value = cities_powered * 10
+            if is_eco:
+                value += 20
+            return value
 
-    def choose_power_plant_to_discard(self, power_plants):
-        """
-        Decide which power plant to discard when over the limit.
+        def choose_power_plant_to_discard(self, power_plants):
+            """
+            Decide which power plant to discard when over the limit.
 
-        Args:
-            power_plants (list): List of PowerPlant objects to choose from.
+            Args:
+                power_plants (list): List of PowerPlant objects to choose from.
 
-        Returns:
-            int or None: The min_bid of the chosen power plant to discard, or None if list is empty.
-        """
-        if not power_plants:
-            return None
+            Returns:
+                int or None: The min_bid of the chosen power plant to discard, or None if list is empty.
+            """
+            if not power_plants:
+                return None
 
-        # Strategy: discard the plant with the lowest number of cities powered
-        plant_to_discard = min(power_plants, key=lambda pp: pp.cities)
-        return plant_to_discard.min_bid if hasattr(plant_to_discard, 'min_bid') else None
+            # Strategy: discard the plant with the lowest number of cities powered
+            plant_to_discard = min(power_plants, key=lambda pp: pp.cities)
+            return plant_to_discard.min_bid if hasattr(plant_to_discard, 'min_bid') else None
 
-    def decide_resources_to_buy(self, resource_market):
-        """
-        Decide which resources to buy based on the power plants owned.
+        def decide_resources_to_buy(self, resource_market):
+            """
+            Decide which resources to buy based on the power plants owned.
 
-        Args:
-            resource_market (dict): Available resources in the market.
+            Args:
+                resource_market (dict): Available resources in the market.
 
-        Returns:
-            dict: Resources to buy with their respective amounts.
-        """
-        purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
-        for plant in self.power_plants:
-            print("\n\nPlant being checked: ", plant)
+            Returns:
+                dict: Resources to buy with their respective amounts.
+            """
+            purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+            for plant in self.power_plants:
+                print("\n\nPlant being checked: ", plant)
 
-            resource_types = plant.resource_type
-            resource_needed = plant.resource_num
-            is_hybrid = plant.is_hybrid
+                resource_types = plant.resource_type
+                resource_needed = plant.resource_num
+                is_hybrid = plant.is_hybrid
 
-            if not resource_types or resource_needed == 0:
-                continue  # Eco-friendly plant or no resources needed
+                if not resource_types or resource_needed == 0:
+                    continue  # Eco-friendly plant or no resources needed
 
-            if is_hybrid:
-                # Hybrid plant: buy resources in any combination
-                for rtype in resource_types:
+                if is_hybrid:
+                    # Hybrid plant: buy resources in any combination
+                    for rtype in resource_types:
+                        available = resource_market.get(rtype, 0)
+                        if available > 0 and self.elektro > 0:
+                            amount_to_buy = min(available, resource_needed)
+                            purchases[rtype] += amount_to_buy
+                            resource_needed -= amount_to_buy
+                            self.elektro -= amount_to_buy * 1  # Simplified cost
+                            if resource_needed <= 0:
+                                break
+                else:
+                    # Non-hybrid plant: buy required resources
+                    rtype = resource_types[0]
                     available = resource_market.get(rtype, 0)
                     if available > 0 and self.elektro > 0:
                         amount_to_buy = min(available, resource_needed)
                         purchases[rtype] += amount_to_buy
                         resource_needed -= amount_to_buy
                         self.elektro -= amount_to_buy * 1  # Simplified cost
-                        if resource_needed <= 0:
-                            break
-            else:
-                # Non-hybrid plant: buy required resources
-                rtype = resource_types[0]
-                available = resource_market.get(rtype, 0)
-                if available > 0 and self.elektro > 0:
-                    amount_to_buy = min(available, resource_needed)
-                    purchases[rtype] += amount_to_buy
-                    resource_needed -= amount_to_buy
-                    self.elektro -= amount_to_buy * 1  # Simplified cost
-        return purchases
+            return purchases
 
-    def decide_cities_to_build(self, map_status):
-        """
-        Decide where to build houses based on the map status.
+        def decide_cities_to_build(self, map_status):
+            """
+            Decide where to build houses based on the map status.
 
-        Args:
-            map_status (dict): Current status of the map.
+            Args:
+                map_status (dict): Current status of the map.
 
-        Returns:
-            list: List of cities to build houses in.
-        """
-        # Simple logic: build in the first available city not owned
-        for city, data in map_status.items():
-            if city not in self.cities_owned:
-                return [city]
-        return []
+            Returns:
+                list: List of cities to build houses in.
+            """
+            # Simple logic: build in the first available city not owned
+            for city, data in map_status.items():
+                if city not in self.cities_owned:
+                    return [city]
+            return []
 
     async def setup(self):
         """
         Sets up the agent by adding the ReceivePhaseBehaviour.
         """
         print(f"Player {self.player_id} agent starting...")
-        receive_phase_behaviour = self.ReceivePhaseBehaviour()
+        receive_phase_behaviour = PowerGridPlayerAgent.ReceivePhaseBehaviour()
         self.add_behaviour(receive_phase_behaviour)
