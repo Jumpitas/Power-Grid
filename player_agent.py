@@ -100,7 +100,7 @@ class PowerGridPlayerAgent(Agent):
         print(f"Order for the round {round_no}: {edit_order(order)}")
         split_parts()
         globals.environment_instance.print_environment()
-        sleep(3)
+        sleep(1)
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
@@ -323,21 +323,23 @@ class PowerGridPlayerAgent(Agent):
                         self.agent.update_inventory()
                         #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
-
-                    elif phase == "phase5":
-                        # Phase 5 (Bureaucracy)
-                        print(f"Player {self.agent.player_id} acknowledges Phase 5 - Bureaucracy.")
-                        # Decide how to power cities
-                        cities_powered = self.decide_cities_to_power()
-                        # Send the number of cities powered back to the manager
-                        response = Message(to=sender)
-                        response.body = json.dumps({
-                            "phase": "phase5",
-                            "action": "power_cities",
-                            "cities_powered": cities_powered
-                        })
-                        await self.send(response)
-                        print(f"Player {self.agent.player_id} decides to power {cities_powered} cities.")
+                elif phase == "phase5":
+                    # Phase 5 (Bureaucracy)
+                    print(f"Player {self.agent.player_id} acknowledges Phase 5 - Bureaucracy.")
+                    # Decide how to power cities
+                    cities_powered, resources_consumed = self.agent.decide_cities_to_power()
+                    # Send the number of cities powered and resources consumed back to the manager
+                    response = Message(to=sender)
+                    response.body = json.dumps({
+                        "phase": "phase5",
+                        "action": "power_cities",
+                        "cities_powered": cities_powered,
+                        "resources_consumed": resources_consumed,
+                        "elektro": self.agent.elektro  # Include updated Elektro
+                    })
+                    await self.send(response)
+                    print(
+                        f"Player {self.agent.player_id} powered {cities_powered} cities, consumed {resources_consumed}, and now has {self.agent.elektro} Elektro.")
 
                 elif phase == "game_over":
                     # Handle game over
@@ -595,9 +597,11 @@ class PowerGridPlayerAgent(Agent):
         def decide_cities_to_power(self):
             """
             Decides how many cities to power based on the player's resources, power plants, and owned cities.
+            Updates Elektro and resources directly.
             """
             available_resources = self.agent.resources.copy()
             cities_powered = 0
+            resources_consumed = {}
 
             for plant in self.agent.power_plants:
                 resource_needed = plant.resource_num
@@ -606,32 +610,47 @@ class PowerGridPlayerAgent(Agent):
                     cities_powered += plant.cities
                 elif plant.is_hybrid:
                     # Hybrid plant: mix resources
-                    total_available = sum(available_resources[r] for r in plant.resource_type)
+                    total_available = sum(available_resources.get(r, 0) for r in plant.resource_type)
                     if total_available >= resource_needed:
-                        for r in plant.resource_type:
-                            used = min(resource_needed, available_resources[r])
-                            available_resources[r] -= used
-                            resource_needed -= used
-                            if resource_needed == 0:
-                                break
+                        consumed = {}
+                        for rtype in plant.resource_type:
+                            used = min(resource_needed, available_resources.get(rtype, 0))
+                            if used > 0:
+                                consumed[rtype] = consumed.get(rtype, 0) + used
+                                available_resources[rtype] -= used
+                                resource_needed -= used
+                                if resource_needed == 0:
+                                    break
                         cities_powered += plant.cities
+                        # Record consumed resources
+                        for r, amt in consumed.items():
+                            resources_consumed[r] = resources_consumed.get(r, 0) + amt
                 else:
                     # Single-resource plant
                     rtype = plant.resource_type[0]
-                    if available_resources[rtype] >= resource_needed:
+                    if available_resources.get(rtype, 0) >= resource_needed:
                         available_resources[rtype] -= resource_needed
                         cities_powered += plant.cities
+                        resources_consumed[rtype] = resources_consumed.get(rtype, 0) + resource_needed
 
                 # Stop if we've powered all owned cities
                 if cities_powered >= len(self.agent.cities_owned):
                     break
 
-            # Deduct resources from inventory
-            self.agent.resources = available_resources
-            self.agent.update_inventory()  # Update resources in the global inventory
+            # Calculate income based on city_cashback
+            if cities_powered <= len(city_cashback):
+                elektro_earned = city_cashback[cities_powered]
+            else:
+                elektro_earned = city_cashback[-1]  # Use max cashback value if cities_powered exceeds defined cashback
 
-            print(f"Player {self.agent.player_id} powered {cities_powered} cities.")
-            return cities_powered
+            # Update Elektro and resources
+            self.agent.elektro += elektro_earned
+            self.agent.resources = available_resources
+            self.agent.update_inventory()
+
+            print(
+                f"Player {self.agent.player_id} powered {cities_powered} cities, earned {elektro_earned} Elektro, and consumed {resources_consumed}.")
+            return cities_powered, resources_consumed
 
     async def setup(self):
         print(f"Player {self.player_id} agent starting...")

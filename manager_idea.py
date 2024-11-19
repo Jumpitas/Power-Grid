@@ -576,34 +576,63 @@ class GameManagerAgent(Agent):
 
         async def phase5(self):
             print("Phase 5: Bureaucracy")
+
+            # Request cities_powered from all players
             for player_id, player in self.players.items():
-                # Calculate cities powered
-                cities_powered = self.calculate_cities_powered(player)
+                msg = Message(to=player["jid"])
+                msg.body = json.dumps({
+                    "phase": "phase5",
+                    "action": "power_cities_request"
+                })
+                await self.send(msg)
+                print(f"Requested cities to power from Player {player_id}.")
 
-                # Calculate and add income
-                income_table = self.environment.city_cashback
-                if cities_powered < len(income_table):
-                    income = income_table[cities_powered]
-                else:
-                    income = income_table[-1]  # Max income
-                player["elektro"] += income
+            # Collect responses
+            for player_id, player in self.players.items():
+                response = await self.receive(timeout=30)
+                if response:
+                    data = json.loads(response.body)
+                    if data.get("phase") == "phase5" and data.get("action") == "power_cities":
+                        cities_powered = data.get("cities_powered", 0)
+                        resources_consumed = data.get("resources_consumed", {})
+                        updated_elektro = data.get("elektro", 0)
 
-                # Log the income earned
-                print(f"Player {player_id} powered {cities_powered} cities and earned {income} Elektro.")
+                        # Verify and update player's Elektro
+                        expected_income = city_cashback[cities_powered] if cities_powered < len(city_cashback) else \
+                        city_cashback[-1]
+                        actual_income = updated_elektro - player["elektro"]
+                        if actual_income != expected_income:
+                            print(
+                                f"Warning: Player {player_id} reported unexpected income. Expected: {expected_income}, Got: {actual_income}.")
+                        player["elektro"] = updated_elektro
 
-                # Consume resources used for powering cities
-                self.consume_resources(player)
+                        # Deduct consumed resources
+                        for resource, amount in resources_consumed.items():
+                            if resource in player["resources"]:
+                                player["resources"][resource] -= amount
+                                if player["resources"][resource] < 0:
+                                    player["resources"][resource] = 0  # Prevent negative resources
+                                print(f"Player {player_id}: Consumed {amount} of {resource}.")
+
+                        # Update player's powered cities
+                        player["cities_powered"] = cities_powered
+
+                        print(
+                            f"Player {player_id} powered {cities_powered} cities, earned {expected_income} Elektro, and consumed {resources_consumed} resources.")
 
             # Resupply the resource market
             self.resupply_resource_market()
+            print("Resupplied the resource market.")
 
             # Update the power plant market
             self.update_power_plant_market_phase5()
+            print("Updated the power plant market.")
 
             # Check for game end conditions
             if self.check_game_end():
                 await self.end_game()
             else:
+                # Proceed to the next round
                 self.current_phase = "phase1"
                 self.round += 1
                 print(f"Starting Round {self.round}")
