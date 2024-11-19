@@ -1,14 +1,26 @@
 # main.py
 
 import asyncio
+import os
+
 from manager_idea import GameManagerAgent  # Adjusted import to match the module name
 from player_agent import PowerGridPlayerAgent
 from game_environment import Environment
 import globals
-
+from time import sleep
 
 async def main():
     num_players = 3 # <- modifiable
+
+    ascii_art = """\n\n\n\n\n\n
+    ____  _____  _    _  ____  ____        ___  ____  ____  ____    
+    (  _ \(  _  )( \/\/ )( ___)(  _ \ ___  / __)(  _ \(_  _)(  _ \   
+    )___/ )(_)(  )    (  )__)  )   /(___)( (_-. )   / _)(_  )(_) )  
+    (__)  (_____)(__/\__)(____)(_)\_)      \___/(_)\_)(____)(____/   
+                """
+    sleep(2)
+    os.system("clear")
+
 
     # environment instance
     globals.environment_instance = Environment(num_players) # <- if this is globalized the rest works

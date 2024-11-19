@@ -136,8 +136,9 @@ class Environment:
 
     def print_environment(self):
         # prints 100 blank lines while os.system('clear') not working
-        clear_screen()
+        #clear_screen()
 
+        print("\n##########################################################   CURRENT ENVIRONMENT STATUS   ##########################################################  \n")
         ################## Resource Market Status ##################
 
         print("Current Resource Market Status: \n")
@@ -185,7 +186,7 @@ class Environment:
 
         print(df) # players
 
-        sleep(4)
+        sleep(3)
 
     def update_cities_owned(self, playerID, city):
         """
@@ -238,9 +239,9 @@ class Environment:
         print(f"Initial Future Market: {self.power_plant_market.future_market}")
         print(f"Initial Deck: {self.power_plant_market.deck}")
 
-
+os.system('clear')
 env_test = Environment(3)
-# env_test.print_environment()
+env_test.print_environment()
 
 
 
