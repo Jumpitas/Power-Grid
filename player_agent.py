@@ -46,17 +46,17 @@ class PowerGridPlayerAgent(Agent):
         """
         Updates the player's attributes with the current inventory from the global environment.
         """
-        inventory = globals.environment_instance.players[self.player_id]
-        self.houses = inventory['houses']
-        self.elektro = inventory['elektro']
-        self.cities_owned = inventory['cities_owned']
-        self.number_cities_owned = inventory['number_cities_owned']
-        self.cities_powered = inventory['cities_powered']
-        self.power_plants = inventory['power_plants']
-        self.resources = inventory['resources']
-        self.has_bought_power_plant = inventory['has_bought_power_plant']
-        self.position = inventory['position']
-        self.connected_cities = inventory['connected_cities']
+        inventory = globals.environment_instance.players.get(self.player_id, {})
+        self.houses = inventory.get('houses', 0)
+        self.elektro = inventory.get('elektro', 0)
+        self.cities_owned = inventory.get('cities_owned', [])
+        self.number_cities_owned = inventory.get('number_cities_owned', 0)
+        self.cities_powered = inventory.get('cities_powered', [])
+        self.power_plants = inventory.get('power_plants', [])
+        self.resources = inventory.get('resources', {})
+        self.has_bought_power_plant = inventory.get('has_bought_power_plant', False)
+        self.position = inventory.get('position', None)
+        self.connected_cities = inventory.get('connected_cities', 0)
 
     def update_inventory(self):
         """
@@ -78,6 +78,9 @@ class PowerGridPlayerAgent(Agent):
 
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
+            # Synchronize inventory at the start of each cycle
+            self.agent.get_inventory()
+
             msg = await self.receive(timeout=30)
             if msg:
                 sender = str(msg.sender).split('/')[0]
@@ -96,13 +99,14 @@ class PowerGridPlayerAgent(Agent):
                     # Handle setup phase
                     player_order = data.get("player_order")
                     self.agent.position = player_order
+                    self.agent.update_inventory()
                     print(f"Player {self.agent.player_id} received setup information. Position: {player_order}")
-                    # Additional setup logic if needed
 
                 elif phase == "phase1":
                     # Handle player order notification
                     player_order = data.get("player_order")
                     self.agent.position = player_order
+                    self.agent.update_inventory()
                     print(f"Player {self.agent.player_id} is in position {player_order}")
 
                 elif phase == "phase2":
@@ -215,6 +219,7 @@ class PowerGridPlayerAgent(Agent):
                             if power_plant:
                                 self.agent.power_plants.append(power_plant)
                                 self.agent.elektro -= bid  # Deduct the bid amount
+                                self.agent.update_inventory()
                                 print("Bid ammount: ", bid)
                                 print(f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
 
@@ -246,6 +251,7 @@ class PowerGridPlayerAgent(Agent):
                         for resource, amount in purchases.items():
                             self.agent.resources[resource] = self.agent.resources.get(resource, 0) + amount
                         self.agent.elektro -= total_cost
+                        self.agent.update_inventory()
                         print(f"Player {self.agent.player_id} purchased resources: {purchases} for total cost {total_cost}.")
 
                 elif phase == "phase4":
@@ -271,6 +277,7 @@ class PowerGridPlayerAgent(Agent):
                         # Update player's cities
                         self.agent.cities_owned.extend(cities)
                         self.agent.elektro -= total_cost
+                        self.agent.update_inventory()
                         #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
                 elif phase == "phase5":
@@ -297,12 +304,37 @@ class PowerGridPlayerAgent(Agent):
         def should_pass(self, power_plant_market):
             """
             Decide whether to pass based on the current power plant market.
+            Leverages the existing evaluate_power_plant function for decision-making.
+            Factors:
+            - Whether the player needs a power plant.
+            - Value of the power plants in the market.
+            - Remaining Elektro after purchase.
             """
+            # Player needs a power plant if they have less than 3
             need_power_plant = len(self.agent.power_plants) < 3
-            can_afford_any = any(
-                pp.min_bid <= self.agent.elektro for pp in power_plant_market
-            )
-            return not need_power_plant or not can_afford_any
+
+            # Filter affordable power plants
+            affordable_plants = [pp for pp in power_plant_market if pp.min_bid <= self.agent.elektro]
+            if not affordable_plants:
+                # No affordable plants in the market
+                return True
+
+            # Evaluate all affordable plants
+            evaluated_plants = [(pp, self.evaluate_power_plant(pp)) for pp in affordable_plants]
+
+            # Choose the plant with the highest value
+            best_plant, best_value = max(evaluated_plants, key=lambda x: x[1])
+
+            # Determine if purchasing this plant leaves enough Elektro for future turns
+            remaining_elektro = self.agent.elektro - best_plant.min_bid
+
+            # Decision-making logic
+            if remaining_elektro < 10:
+                # Pass if buying the plant would leave too little Elektro
+                return True
+
+            # Pass if the player doesn't need a plant or the best plant is not worth it
+            return not need_power_plant or best_value < 1.5
 
         def choose_power_plant_to_auction(self, market):
             """
@@ -409,6 +441,7 @@ class PowerGridPlayerAgent(Agent):
                             purchases[rtype] += amount_to_buy
                             resource_needed -= amount_to_buy
                             self.agent.elektro -= amount_to_buy * 1  # Simplified cost
+            self.agent.update_inventory()
             return purchases
 
         def decide_cities_to_build(self, map_status):
@@ -423,4 +456,3 @@ class PowerGridPlayerAgent(Agent):
         print(f"Player {self.player_id} agent starting...")
         receive_phase_behaviour = PowerGridPlayerAgent.ReceivePhaseBehaviour()
         self.add_behaviour(receive_phase_behaviour)
-#
