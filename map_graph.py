@@ -168,7 +168,7 @@ class BoardMap:
         # Add edges with weights (cost A -> B)
         self.map.add_weighted_edges_from(links)
 
-    def update_owner(self, player_jid, city_tag, max_occupancy=1):
+    def update_owner(self, player_jid, city_tag, max_occupancy=2):
         """
         Updates the owner of a city based on the provided city tag and player ID.
 
@@ -257,7 +257,7 @@ class BoardMap:
 
         :param player_jid: The JID of the player.
         :param new_city: The 3-letter tag of the city to connect.
-        :return: Minimum connection cost or None if no connection exists.
+        :return: Minimum connection cost or float('inf') if no connection exists.
         """
         player_cities = [city for city, data in self.map.nodes(data=True) if player_jid in data.get('owners', [])]
 
@@ -275,7 +275,7 @@ class BoardMap:
             except nx.NetworkXNoPath:
                 continue
 
-        return min_cost if min_cost != float('inf') else None
+        return min_cost if min_cost != float('inf') else float('inf')
 
     def calculate_path_cost(self, path):
         """
