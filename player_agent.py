@@ -290,7 +290,7 @@ class PowerGridPlayerAgent(Agent):
                         # Update player's resources and elektro
                         for resource, amount in purchases.items():
                             self.agent.resources[resource] = self.agent.resources.get(resource, 0) + amount
-                        self.agent.elektro -= total_cost
+                        #self.agent.elektro -= total_cost
                         self.agent.update_inventory()
                         print(f"Player {self.agent.player_id} purchased resources: {purchases} for total cost {total_cost}.")
 
@@ -315,7 +315,10 @@ class PowerGridPlayerAgent(Agent):
                         cities = data.get("cities", [])
                         total_cost = data.get("total_cost", 0)
                         # Update player's cities
-                        self.agent.cities_owned.extend(cities)
+                        self.agent.cities_owned.append(cities)
+                        print(f"Player {self.agent.player_id} "
+                              f"chose to purchase city(ies) totaling {total_cost}"
+                              f"while having {self.agent.elektro}")
                         self.agent.elektro -= total_cost
                         self.agent.update_inventory()
                         #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
@@ -492,7 +495,7 @@ class PowerGridPlayerAgent(Agent):
                 if not resource_types or resource_needed == 0:
                     continue  # Eco-friendly plant or no resources needed
 
-                if is_hybrid:
+                elif is_hybrid:
                     # Hybrid plant: buy resources in any combination
                     for rtype in resource_types:
                         available = resource_market.get(rtype, 0)
@@ -559,8 +562,8 @@ class PowerGridPlayerAgent(Agent):
                 # Add city to build list and deduct costs
                 cities_to_build.append(city)
                 available_elektro -= total_cost
-                self.agent.elektro -= total_cost  # Deduct from player's elektro
-                self.agent.cities_owned.append(city)  # Add city to owned cities
+                #self.agent.elektro -= total_cost  # Deduct from player's elektro
+                #self.agent.cities_owned.append(city)  # Add city to owned cities
                 self.agent.update_inventory()  # Update inventory to reflect changes
                 print(f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}")
 
