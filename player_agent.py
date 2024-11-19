@@ -125,6 +125,8 @@ class PowerGridPlayerAgent(Agent):
                         # Decide whether to start an auction or pass
                         power_plant_market = data.get("power_plants", [])
                         can_pass = data.get("can_pass", True)
+
+                        # //////////// fica com ou sem atributo???
                         self.agent.power_plant_market = power_plant_market
                         if can_pass:
                             # Decide to pass or choose a power plant
@@ -212,7 +214,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         discard_msg.body = json.dumps(discard_data)
                         await self.send(discard_msg)
-                        print(f"Player {self.agent.player_id} discards power plant {discard_number}.")
+                        print(f"Player {self.agent.player_id} chose to discard power plant {discard_number}.")
 
                     elif action == "auction_result":
                         # Handle auction result
@@ -362,11 +364,9 @@ class PowerGridPlayerAgent(Agent):
             if not power_plants:
                 return None
 
-            def plant_value(pp):
-                return pp.get('cities', 0)
-
-            plant_to_discard = min(power_plants, key=plant_value)
-            return plant_to_discard.get('min_bid', None)
+            # Uses simple function to evaluate plants based on min_bid value
+            plant_to_discard = min(power_plants, key=lambda plant: plant.min_bid)
+            return plant_to_discard.min_bid
 
         def decide_resources_to_buy(self, resource_market):
             # Simple logic: buy resources needed for one round of operation
