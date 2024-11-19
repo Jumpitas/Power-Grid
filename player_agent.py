@@ -20,13 +20,21 @@ def clear_screen():
 def split_parts():
     print("\n" + "-" * 30 + "\n")
 
-def edit_order(player_list): # help to the formatting
-    formatted_players = [f"player{player}" for player in player_list]
+def edit_order(player_list):
+    # Check if player_list is None or not a list
+    if not player_list:
+        return "No players in the order"
+
+    # Clean up and format each player's name
+    formatted_players = [
+        player.strip().split('@')[0] for player in player_list
+    ]
 
     # Join the players with " -> "
     result = " -> ".join(formatted_players)
 
     return result
+
 
 ######################################################################
 import globals
@@ -158,14 +166,14 @@ class PowerGridPlayerAgent(Agent):
               f" earned {elektro_earned} Elektro, and consumed {resources_consumed}.")
         return cities_powered, resources_consumed
 
-    def print_status(self, phase=-1, round_no='placeholder_for_manager_retrieval', turn=-1, order=[-1,-2,-3], subphase=None, decision=""):
+    def print_status(self, phase=-1, round_no='placeholder_for_manager_retrieval', turn=-1, order=['player2@localhost'], subphase=None, decision=""):
         print("\n##########################################################   CURRENTLY HAPPENING   ##########################################################  \n")
         print(f"It's the player {turn}'s turn: ")
         print(f"Order for the round {round_no}: {edit_order(order)}\n")
         print(f"The current phase is {phase} and sub phase is {subphase}")
         print(f"The decision is: {decision}")
         globals.environment_instance.print_environment()
-        sleep(4)
+        sleep(2)
         os.system("clear")
 
 
@@ -201,8 +209,8 @@ class PowerGridPlayerAgent(Agent):
                     self.agent.position = player_order
                     self.agent.update_inventory()
                     #print(f"Player {self.agent.player_id} is in position {player_order}")
-                    self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                            turn=self.agent.player_id, order=['placeholder'], subphase=action, decision = "None")
+                    self.agent.print_status(phase=phase, round_no=data.get("round"), order=data.get("list_order_complete"),
+                                            turn=self.agent.player_id, subphase=action, decision = "None")
 
 
                 elif phase == "phase2":
@@ -221,8 +229,8 @@ class PowerGridPlayerAgent(Agent):
                                 choice_msg.body = json.dumps(choice_data)
                                 await self.send(choice_msg)
                                 print(f"Player {self.agent.player_id} decides to pass on starting an auction.")
-                                self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                        turn=self.agent.player_id, order=data.get("player_order"),
+                                self.agent.print_status(phase=phase, round_no=data.get("round"), order=data.get("list_order_complete"),
+                                                        turn=self.agent.player_id,
                                                         subphase=action, decision="pass")
 
                             else:
@@ -237,7 +245,7 @@ class PowerGridPlayerAgent(Agent):
                                     await self.send(choice_msg)
                                     print(f"Player {self.agent.player_id} chooses to auction power plant {chosen_plant_number}.")
                                     self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                            turn=self.agent.player_id, order=data.get("player_order"),
+                                                            turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                             subphase=action, decision="auction")
 
 
@@ -251,7 +259,7 @@ class PowerGridPlayerAgent(Agent):
                                     await self.send(choice_msg)
                                     print(f"Player {self.agent.player_id} cannot afford any power plant and passes.")
                                     self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                            turn=self.agent.player_id, order=data.get("player_order"),
+                                                            turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                             subphase=action, decision="pass")
 
 
@@ -267,7 +275,7 @@ class PowerGridPlayerAgent(Agent):
                             await self.send(choice_msg)
                             print(f"Player {self.agent.player_id} must auction power plant {chosen_plant_number} (first round).")
                             self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                    turn=self.agent.player_id, order=data.get("player_order"),
+                                                    turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                     subphase=action, decision="auction")
 
                     elif action == "initial_bid":
@@ -284,7 +292,7 @@ class PowerGridPlayerAgent(Agent):
                         await self.send(bid_msg)
                         print(f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                turn=self.agent.player_id, order=data.get("player_order"),
+                                                turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"bid {bid_amount}")
 
 
@@ -308,7 +316,7 @@ class PowerGridPlayerAgent(Agent):
                             pass
                             #print(f"Player {self.agent.player_id} passes on bidding.")
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                turn=self.agent.player_id, order=data.get("player_order"),
+                                                turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"bid {bid_amount}")
 
 
@@ -326,7 +334,7 @@ class PowerGridPlayerAgent(Agent):
                         await self.send(discard_msg)
                         #print(f"Player {self.agent.player_id} discards power plant {discard_number}.")
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                turn=self.agent.player_id, order=data.get("player_order"),
+                                                turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"discard {discard_number}")
 
 

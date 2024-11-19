@@ -101,6 +101,7 @@ class GameManagerAgent(Agent):
                 raise ValueError("order_players should contain integer player IDs.")
 
             self.player_order = [self.player_id_to_jid[p] for p in self.environment.order_players]
+            print(f'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n{self.player_order}\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
 
             # Notify all players about the setup phase completion
             for jid in self.player_jids:
@@ -108,7 +109,8 @@ class GameManagerAgent(Agent):
                 msg.body = json.dumps({
                     "phase": "setup",
                     "map": "Map data here",  # You can serialize the map if needed
-                    "player_order": self.players[jid]["position"]
+                    "player_order": self.players[jid]["position"],
+                    "list_order_complete": self.player_order
                 })
                 await self.send(msg)
 
