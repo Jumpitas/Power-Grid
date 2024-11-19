@@ -600,11 +600,13 @@ class GameManagerAgent(Agent):
                         # Verify and update player's Elektro
                         expected_income = city_cashback[cities_powered] if cities_powered < len(city_cashback) else \
                         city_cashback[-1]
+
+                        '''
                         actual_income = updated_elektro - player["elektro"]
                         if actual_income != expected_income:
                             print(
                                 f"Warning: Player {player_id} reported unexpected income. Expected: {expected_income}, Got: {actual_income}.")
-                        player["elektro"] = updated_elektro
+                        player["elektro"] = updated_elektro'''
 
                         # Deduct consumed resources
                         for resource, amount in resources_consumed.items():
@@ -617,8 +619,10 @@ class GameManagerAgent(Agent):
                         # Update player's powered cities
                         player["cities_powered"] = cities_powered
 
-                        print(
-                            f"Player {player_id} powered {cities_powered} cities, earned {expected_income} Elektro, and consumed {resources_consumed} resources.")
+                        '''
+                        print(f"Player {player_id} powered {cities_powered} cities,"
+                              f" earned {expected_income} Elektro, "
+                              f"and consumed {resources_consumed} resources.")'''
 
             # Resupply the resource market
             self.resupply_resource_market()

@@ -75,9 +75,13 @@ class PowerGridPlayerAgent(Agent):
 
         for plant in self.power_plants:
             resource_needed = plant.resource_num
+
+            # If it's free, just power
             if not plant.resource_type:
                 # Eco-friendly plant: powers cities without consuming resources
                 cities_powered += plant.cities
+
+            # If it's hybrid, use any combination of resources
             elif plant.is_hybrid:
                 # Hybrid plant: mix resources
                 total_available = sum(available_resources.get(r, 0) for r in plant.resource_type)
@@ -107,6 +111,9 @@ class PowerGridPlayerAgent(Agent):
             if cities_powered >= len(self.cities_owned):
                 break
 
+        if cities_powered > len(self.cities_owned):
+            cities_powered = len(self.cities_owned)
+
         # Calculate income based on city_cashback
         if cities_powered <= len(city_cashback):
             elektro_earned = city_cashback[cities_powered]
@@ -118,9 +125,11 @@ class PowerGridPlayerAgent(Agent):
         self.resources = available_resources
         self.update_inventory()
 
-        print(
-            f"Player {self.player_id} powered {cities_powered} cities, earned {elektro_earned} Elektro, and consumed {resources_consumed}.")
+        print(f"Player {self.player_id} powered {cities_powered} cities,"
+              f" earned {elektro_earned} Elektro, and consumed {resources_consumed}.")
         return cities_powered, resources_consumed
+
+
     class ReceivePhaseBehaviour(CyclicBehaviour):
         async def run(self):
             # Synchronize inventory at the start of each cycle
@@ -333,9 +342,11 @@ class PowerGridPlayerAgent(Agent):
                         cities = data.get("cities", [])
                         total_cost = data.get("total_cost", 0)
                         # Update player's cities
-                        self.agent.cities_owned.append(cities)
+                        self.agent.cities_owned.extend(cities)
                         print(f"Player {self.agent.player_id} "
-                              f"chose to purchase city(ies) totaling {total_cost}"
+                              f"chose to purchase city(ies),"
+                              f" updating them to {self.agent.cities_owned}"
+                              f" totaling {total_cost}"
                               f"while having {self.agent.elektro}")
                         self.agent.elektro -= total_cost
                         self.agent.update_inventory()
