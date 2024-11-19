@@ -227,10 +227,9 @@ class PowerPlantMarket:
         # Assign the remaining to Deck
         self.deck = all_plants_sorted[8:]
 
-        # Debugging Statements
-        print(f"Initial Current Market: {self.current_market}")
-        print(f"Initial Future Market: {self.future_market}")
-        print(f"Deck has {len(self.deck)} power plants.")
+        #print(f"Initial Current Market: {self.current_market}")
+        #print(f"Initial Future Market: {self.future_market}")
+        #print(f"Deck has {len(self.deck)} power plants.")
 
     def update_markets(self):
         """
