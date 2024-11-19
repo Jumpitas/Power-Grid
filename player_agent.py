@@ -472,12 +472,12 @@ class PowerGridPlayerAgent(Agent):
 
                 if resource_type == "uranium":
                     # Uranium has a direct mapping of quantity to price
-                    for unit in range(1, amount_to_buy + 1):
+                    for unit in range(amount_to_buy, 0, -1):
                         if available_units >= unit:
                             total_cost += price_table["uranium"].get(unit, float('inf'))
                 else:
                     # Coal, oil, and garbage have ranges for pricing
-                    for unit in range(1, amount_to_buy + 1):
+                    for unit in range(amount_to_buy, 0, -1):
                         for range_key, price in price_table[resource_type].items():
                             if isinstance(range_key, tuple) and unit in range_key:
                                 total_cost += price
