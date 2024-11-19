@@ -167,8 +167,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         bid_msg.body = json.dumps(bid_data)
                         await self.send(bid_msg)
-                        print(
-                            f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
+                        print(f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
 
                     elif action == "bid":
                         # Receive bid request
@@ -184,10 +183,11 @@ class PowerGridPlayerAgent(Agent):
                         bid_msg.body = json.dumps(bid_data)
                         await self.send(bid_msg)
                         if bid_amount > current_bid:
-                            print(
-                                f"Player {self.agent.player_id} bids {bid_amount} for power plant {power_plant.min_bid if power_plant else 'unknown'}.")
+                            pass
+                            #print(f"Player {self.agent.player_id} bids {bid_amount} for power plant {power_plant.min_bid if power_plant else 'unknown'}.")
                         else:
-                            print(f"Player {self.agent.player_id} passes on bidding.")
+                            pass
+                            #print(f"Player {self.agent.player_id} passes on bidding.")
 
                     elif action == "discard_power_plant":
                         # Player has more than 3 power plants and must discard one
@@ -200,7 +200,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         discard_msg.body = json.dumps(discard_data)
                         await self.send(discard_msg)
-                        print(f"Player {self.agent.player_id} discards power plant {discard_number}.")
+                        #print(f"Player {self.agent.player_id} discards power plant {discard_number}.")
 
                     elif action == "auction_result":
                         # Handle auction result
@@ -208,16 +208,20 @@ class PowerGridPlayerAgent(Agent):
                         power_plant_data = data.get("power_plant", {})
                         power_plant = PowerPlant.from_dict(power_plant_data) if power_plant_data else None
                         bid = data.get("bid", 0)
-                        if winner == self.agent.jid:
+
+                        # Not entering this condition !!!!!!!!!!
+                        if winner == f'player{self.agent.player_id}@localhost':
                             # Add the power plant to the player's state
                             if power_plant:
                                 self.agent.power_plants.append(power_plant)
                                 self.agent.elektro -= bid  # Deduct the bid amount
-                                print(
-                                    f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
+                                print("Bid ammount: ", bid)
+                                print(f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
+
+                                #print(f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
                         else:
-                            print(
-                                f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
+                            print(f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
+                            #print(f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
 
                 elif phase == "phase3":
                     if action == "buy_resources":
@@ -232,6 +236,7 @@ class PowerGridPlayerAgent(Agent):
                         purchase_msg.body = json.dumps(purchase_data)
                         await self.send(purchase_msg)
                         print(f"Player {self.agent.player_id} decides to buy resources: {purchases}.")
+                        print(f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro")
 
                     elif action == "purchase_result":
                         # Handle purchase result
@@ -241,8 +246,7 @@ class PowerGridPlayerAgent(Agent):
                         for resource, amount in purchases.items():
                             self.agent.resources[resource] = self.agent.resources.get(resource, 0) + amount
                         self.agent.elektro -= total_cost
-                        print(
-                            f"Player {self.agent.player_id} purchased resources: {purchases} for total cost {total_cost}.")
+                        print(f"Player {self.agent.player_id} purchased resources: {purchases} for total cost {total_cost}.")
 
                 elif phase == "phase4":
                     if action == "build_houses":
@@ -258,7 +262,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         build_msg.body = json.dumps(build_data)
                         await self.send(build_msg)
-                        print(f"Player {self.agent.player_id} decides to build in cities: {cities_to_build}.")
+                        #print(f"Player {self.agent.player_id} decides to build in cities: {cities_to_build}.")
 
                     elif action == "build_result":
                         # Handle build result
@@ -267,8 +271,7 @@ class PowerGridPlayerAgent(Agent):
                         # Update player's cities
                         self.agent.cities_owned.extend(cities)
                         self.agent.elektro -= total_cost
-                        print(
-                            f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
+                        #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
                 elif phase == "phase5":
                     # Phase 5 (Bureaucracy)
@@ -278,7 +281,7 @@ class PowerGridPlayerAgent(Agent):
                     # Handle game over
                     winner = data.get("winner")
                     final_elektro = data.get("final_elektro")
-                    if winner == self.agent.jid:
+                    if winner == f'player{self.agent.player_id}@localhost':
                         print(f"Player {self.agent.player_id} has won the game with {final_elektro} Elektro!")
                     else:
                         print(f"Player {self.agent.player_id} has lost. Winner: {winner} with {final_elektro} Elektro.")
@@ -322,12 +325,6 @@ class PowerGridPlayerAgent(Agent):
             best_plant = max(affordable_plants, key=plant_value)
             return best_plant.min_bid if hasattr(best_plant, 'min_bid') else None
 
-            # Strategy: pick the plant that provides the best ratio of cities powered per Elektro
-            def plant_value(pp):
-                return pp.get('cities', 0) / pp.get('min_bid', 1)
-
-            best_plant = max(affordable_plants, key=plant_value)
-            return best_plant.get('min_bid', None)
 
         def decide_initial_bid(self, base_min_bid, power_plant):
             # Decide the initial bid based on the value of the power plant
@@ -379,8 +376,6 @@ class PowerGridPlayerAgent(Agent):
             """
             purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
             for plant in self.agent.power_plants:
-                print("\n\nPlant being checked: ", plant)
-
                 # Access attributes directly
                 resource_types = plant.resource_type
                 resource_needed = plant.resource_num
@@ -393,23 +388,27 @@ class PowerGridPlayerAgent(Agent):
                     # Hybrid plant: buy resources in any combination
                     for rtype in resource_types:
                         available = resource_market.get(rtype, 0)
-                        if available > 0 and self.agent.elektro > 0:
+                        if available > 0:
                             # Purchase as much as possible (up to resource_needed)
                             amount_to_buy = min(available, resource_needed)
-                            purchases[rtype] += amount_to_buy
-                            resource_needed -= amount_to_buy
-                            self.agent.elektro -= amount_to_buy * 1  # Simplified cost
+
+                            if self.agent.elektro > amount_to_buy:
+                                purchases[rtype] += amount_to_buy
+                                resource_needed -= amount_to_buy
+                                self.agent.elektro -= amount_to_buy * 1  # Simplified cost
                             if resource_needed <= 0:
                                 break
                 else:
                     # Non-hybrid plant: buy required resources
                     rtype = resource_types[0]
                     available = resource_market.get(rtype, 0)
-                    if available > 0 and self.agent.elektro > 0:
+                    if available > 0:
                         amount_to_buy = min(available, resource_needed)
-                        purchases[rtype] += amount_to_buy
-                        resource_needed -= amount_to_buy
-                        self.agent.elektro -= amount_to_buy * 1  # Simplified cost
+
+                        if self.agent.elektro > amount_to_buy:
+                            purchases[rtype] += amount_to_buy
+                            resource_needed -= amount_to_buy
+                            self.agent.elektro -= amount_to_buy * 1  # Simplified cost
             return purchases
 
         def decide_cities_to_build(self, map_status):

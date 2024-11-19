@@ -298,9 +298,12 @@ class GameManagerAgent(Agent):
                 highest_bidder["has_bought_power_plant"] = True
                 print(f"{highest_bidder['jid']} wins the auction for power plant {power_plant.min_bid} with a bid of {current_bid} Elektro.")
 
+                print("Highest bidder: ", highest_bidder)
                 # Handle discard if necessary
                 if len(highest_bidder["power_plants"]) > 3:
                     await self.handle_power_plant_discard(highest_bidder)
+
+                print("Highest bidder after waiting for discard: ", highest_bidder)
 
                 # Update the power plant market
                 self.environment.power_plant_market.remove_plant_from_market(power_plant)
@@ -685,6 +688,8 @@ class GameManagerAgent(Agent):
                     winner = player
                 elif cities_powered == max_cities_powered:
                     # Tie-breaker: player with more elektro
+                    print("player[elektro]", {player["elektro"]})
+                    print("winner[elektro]", {winner["elektro"]})
                     if player["elektro"] > winner["elektro"]:
                         winner = player
 
