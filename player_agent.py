@@ -259,9 +259,7 @@ class PowerGridPlayerAgent(Agent):
                                 choice_msg.body = json.dumps(choice_data)
                                 await self.send(choice_msg)
                                 update_log(f"Player {self.agent.player_id} decides to pass on starting an auction.")
-                                self.agent.print_status(phase=phase, round_no=data.get("round"), order=data.get("list_order_complete"),
-                                                        turn=self.agent.player_id,
-                                                        subphase=action, decision="pass")
+
 
                             else:
                                 chosen_plant_number = self.choose_power_plant_to_auction(power_plant_market)
@@ -274,9 +272,7 @@ class PowerGridPlayerAgent(Agent):
                                     choice_msg.body = json.dumps(choice_data)
                                     await self.send(choice_msg)
                                     update_log(f"Player {self.agent.player_id} chooses to auction power plant {chosen_plant_number}.")
-                                    self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                            turn=self.agent.player_id, order=data.get("list_order_complete"),
-                                                            subphase=action, decision="auction")
+
 
 
                                 else:
@@ -288,9 +284,7 @@ class PowerGridPlayerAgent(Agent):
                                     choice_msg.body = json.dumps(choice_data)
                                     await self.send(choice_msg)
                                     update_log(f"Player {self.agent.player_id} cannot afford any power plant and passes.")
-                                    self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                            turn=self.agent.player_id, order=data.get("list_order_complete"),
-                                                            subphase=action, decision="pass")
+
 
 
                         else:
@@ -304,9 +298,7 @@ class PowerGridPlayerAgent(Agent):
                             choice_msg.body = json.dumps(choice_data)
                             await self.send(choice_msg)
                             update_log(f"Player {self.agent.player_id} must auction power plant {chosen_plant_number} (first round).")
-                            self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                    turn=self.agent.player_id, order=data.get("list_order_complete"),
-                                                    subphase=action, decision="auction")
+
 
                     elif action == "initial_bid":
                         # Handle initial bid from starting player
@@ -321,9 +313,7 @@ class PowerGridPlayerAgent(Agent):
                         bid_msg.body = json.dumps(bid_data)
                         await self.send(bid_msg)
                         update_log(f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
-                        self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                turn=self.agent.player_id, order=data.get("list_order_complete"),
-                                                subphase=action, decision=f"bid {bid_amount}")
+
 
 
                     elif action == "bid":
@@ -357,9 +347,6 @@ class PowerGridPlayerAgent(Agent):
                             bid_amount = 0
                             update_log(f"Player {self.agent.player_id} passes on bidding, doesn't want power plant.")
 
-                        self.agent.print_status(phase=phase, round_no=data.get("round"),
-                                                turn=self.agent.player_id, order=data.get("list_order_complete"),
-                                                subphase=action, decision=f"bid {bid_amount}")
 
 
 
@@ -381,30 +368,37 @@ class PowerGridPlayerAgent(Agent):
 
 
 
+
                     elif action == "auction_result":
                         # Handle auction result
                         winner = data.get("winner")
                         power_plant_data = data.get("power_plant", {})
                         power_plant = PowerPlant.from_dict(power_plant_data) if power_plant_data else None
                         bid = data.get("bid", 0)
-
-                        # Not entering this condition !!!!!!!!!!
+                        # Check if the current player is the winner
+                        self.agent.print_status(phase=phase, round_no=data.get("round"),
+                                                order=data.get("list_order_complete"),
+                                                turn=self.agent.player_id,
+                                                subphase=action, decision="pass")
                         if winner == f'player{self.agent.player_id}@localhost':
-                            # Add the power plant to the player's state and avoid loop duplication
-                            if power_plant and power_plant not in self.agent.power_plants:
+                            # Add the power plant to the player's state only if it's not already present
+                            if power_plant and all(pp.min_bid != power_plant.min_bid for pp in self.agent.power_plants):
                                 self.agent.power_plants.append(power_plant)
                                 self.agent.elektro -= bid  # Deduct the bid amount
                                 self.agent.update_inventory()
-                                update_log(f"Bid ammount: {bid}")
-                                update_log(f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
-
-
-                                update_log(f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
+                                update_log(f"Bid amount: {bid}")
+                                update_log(
+                                    f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
+                                update_log(
+                                    f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
+                            else:
+                                update_log(
+                                    f"Player {self.agent.player_id} already owns power plant {power_plant.min_bid}. Not adding again.")
                         else:
-                            update_log(f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
-
-
-                            update_log(f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
+                            update_log(
+                                f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
+                            update_log(
+                                f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
 
                 elif phase == "phase3":
                     if action == "buy_resources":
@@ -711,6 +705,11 @@ class PowerGridPlayerAgent(Agent):
                 building_cost = environment.building_cost[environment.step]
                 total_cost = connection_cost + building_cost
 
+                # Print the city and its associated costs
+                print(
+                    f"Considering city {city}: Connection cost = {connection_cost}, Building cost = {building_cost}, Total cost = {total_cost}")
+
+                # Check if the player can afford the city
                 if total_cost > available_elektro:
                     print(f"Player {self.agent.player_id} cannot afford city {city}. Skipping.")
                     continue
@@ -718,6 +717,11 @@ class PowerGridPlayerAgent(Agent):
                 if available_houses <= 0:
                     print(f"Player {self.agent.player_id} has no houses left to build in city {city}. Skipping.")
                     break
+
+                # Deduct costs and ensure funds don't go negative
+                if available_elektro - total_cost < 0:
+                    print(f"Building in city {city} would result in negative elektro. Skipping.")
+                    continue
 
                 # Add city to build list and deduct costs
                 cities_to_build.append(city)
@@ -734,11 +738,8 @@ class PowerGridPlayerAgent(Agent):
                 print(
                     f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}, houses: {available_houses}")
 
-                # Allow multiple purchases in the same turn, but stop if funds or houses run out
-                if available_elektro <= 0 or available_houses <= 0:
-                    break
-
             return cities_to_build
+
         def evaluate_city_priority(self, city_tag, city_data):
             """
             Evaluate a city's priority for building.
@@ -756,7 +757,6 @@ class PowerGridPlayerAgent(Agent):
                     proximity_score += 1
 
             # Handle occupancy score
-            # If city_data is a list, ensure proper handling
             if isinstance(city_data, list):
                 owners = city_data  # Assume the list represents the 'owners'
             elif isinstance(city_data, dict):
@@ -767,7 +767,10 @@ class PowerGridPlayerAgent(Agent):
             occupancy_score = max(0, environment.step - len(owners))
 
             # Combine scores (weights can be adjusted based on strategy)
-            return proximity_score + occupancy_score
+            priority_score = proximity_score + occupancy_score
+            print(
+                f"City {city_tag}: Proximity score = {proximity_score}, Occupancy score = {occupancy_score}, Total priority = {priority_score}")
+            return priority_score
 
     async def setup(self):
         print(f"Player {self.player_id} agent starting...")
