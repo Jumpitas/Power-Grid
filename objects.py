@@ -366,7 +366,7 @@ power_plant_socket = [
     # Fusion Plant
     PowerPlant(50,6),
     # Step3 Card
-    PowerPlant(99,99,is_step=True)
+    # PowerPlant(99,99,is_step=True)
 ]
 
 power_plant_plug = [
