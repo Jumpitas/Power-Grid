@@ -1,0 +1,195 @@
+Player 1 received setup information. Position: 1
+Player 2 received setup information. Position: 2
+Player 3 received setup information. Position: 3
+
+------------------------------
+Player 1 is in position 1
+Player 2 is in position 2
+Player 3 is in position 3
+
+------------------------------
+Player 1 must auction power plant 3 (first round).
+Player 1 places initial bid of 3 on power plant 3.
+Player 2 bids 6 for power plant 3.
+Player 3 bids 9 for power plant 3.
+Player 1 bids 12 for power plant 3.
+Player 2 passes on bidding.
+Player 3 passes on bidding.
+Bid ammount: 12
+Winner 1 currently has 38 elektro, after bidding
+Player 1 won the auction for power plant 3 with bid 12.
+Player 2 currently has 50 elektro, after bidding
+Player 2 observed that player player1@localhost won the auction for power plant 3 with bid 12.
+Player 3 currently has 50 elektro, after bidding
+Player 3 observed that player player1@localhost won the auction for power plant 3 with bid 12.
+Player 2 must auction power plant 7 (first round).
+Player 2 places initial bid of 7 on power plant 7.
+Player 3 bids 10 for power plant 7.
+Player 2 bids 13 for power plant 7.
+Player 3 bids 16 for power plant 7.
+Player 2 bids 19 for power plant 7.
+Player 3 bids 22 for power plant 7.
+Player 2 passes on bidding.
+Player 1 currently has 38 elektro, after bidding
+Player 1 observed that player player3@localhost won the auction for power plant 7 with bid 22.
+Bid ammount: 22
+Winner 3 currently has 28 elektro, after bidding
+Player 3 won the auction for power plant 7 with bid 22.
+Player 2 currently has 50 elektro, after bidding
+Player 2 observed that player player3@localhost won the auction for power plant 7 with bid 22.
+Player 2 must auction power plant 5 (first round).
+Player 2 places initial bid of 5 on power plant 5.
+Player 1 currently has 38 elektro, after bidding
+Player 1 observed that player player2@localhost won the auction for power plant 5 with bid 5.
+Player 3 currently has 28 elektro, after bidding
+Player 3 observed that player player2@localhost won the auction for power plant 5 with bid 5.
+Bid ammount: 5
+Winner 2 currently has 45 elektro, after bidding
+Player 2 won the auction for power plant 5 with bid 5.
+
+------------------------------
+
+------------------------------
+Player 3 decides to build in cities: ['SEA'].
+Player 2 decides to build in cities: [].
+Player 3 built houses in cities: ['SEA'] for total cost 10.
+Player 1 decides to build in cities: ['SEA'].
+Player 2 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 1 built houses in cities: ['SEA'] for total cost 0.
+
+------------------------------
+Player 3 is in position 1
+Player 1 is in position 2
+Player 2 is in position 3
+
+------------------------------
+Player 3 chooses to auction power plant 10.
+Player 3 places initial bid of 10 on power plant 10.
+Player 1 bids 13 for power plant 10.
+Player 2 bids 16 for power plant 10.
+Player 3 bids 19 for power plant 10.
+Player 1 bids 19 for power plant 10.
+Player 2 bids 22 for power plant 10.
+Player 1 passes on bidding.
+Bid ammount: 22
+Winner 2 currently has 1 elektro, after bidding
+Player 2 won the auction for power plant 10 with bid 22.
+Player 3 currently has 28 elektro, after bidding
+Player 3 observed that player player2@localhost won the auction for power plant 10 with bid 22.
+Player 1 currently has 44 elektro, after bidding
+Player 1 observed that player player2@localhost won the auction for power plant 10 with bid 22.
+Player 3 chooses to auction power plant 11.
+Player 3 places initial bid of 11 on power plant 11.
+Player 1 bids 14 for power plant 11.
+Player 3 bids 17 for power plant 11.
+Player 1 bids 20 for power plant 11.
+Player 3 passes on bidding.
+Bid ammount: 20
+Winner 1 currently has 24 elektro, after bidding
+Player 1 won the auction for power plant 11 with bid 20.
+Player 2 currently has 1 elektro, after bidding
+Player 2 observed that player player1@localhost won the auction for power plant 11 with bid 20.
+Player 3 currently has 28 elektro, after bidding
+Player 3 observed that player player1@localhost won the auction for power plant 11 with bid 20.
+Player 3 chooses to auction power plant 12.
+Player 3 places initial bid of 12 on power plant 12.
+Player 1 currently has 24 elektro, after bidding
+Player 1 observed that player player3@localhost won the auction for power plant 12 with bid 12.
+Player 2 currently has 1 elektro, after bidding
+Player 2 observed that player player3@localhost won the auction for power plant 12 with bid 12.
+Bid ammount: 12
+Winner 3 currently has 16 elektro, after bidding
+Player 3 won the auction for power plant 12 with bid 12.
+
+------------------------------
+
+------------------------------
+Player 2 decides to build in cities: [].
+Player 1 decides to build in cities: ['POR'].
+Player 3 decides to build in cities: [].
+Player 2 built houses in cities: [] for total cost 0.
+Player 1 built houses in cities: ['POR'] for total cost 10.
+
+------------------------------
+Player 3 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 3 is in position 1
+Player 1 is in position 2
+Player 2 is in position 3
+
+------------------------------
+Player 3 decides to pass on starting an auction.
+Player 1 decides to pass on starting an auction.
+Player 2 decides to pass on starting an auction.
+
+------------------------------
+
+------------------------------
+Player 2 decides to build in cities: [].
+Player 1 decides to build in cities: [].
+Player 3 decides to build in cities: ['POR'].
+Player 2 built houses in cities: [] for total cost 0.
+Player 1 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 3 built houses in cities: ['POR'] for total cost 0.
+
+------------------------------
+Player 3 is in position 1
+Player 1 is in position 2
+Player 2 is in position 3
+
+------------------------------
+Player 3 decides to pass on starting an auction.
+Player 1 decides to pass on starting an auction.
+Player 2 decides to pass on starting an auction.
+
+------------------------------
+
+------------------------------
+Player 2 decides to build in cities: ['SEA'].
+Player 1 decides to build in cities: [].
+Player 3 decides to build in cities: [].
+Player 2 built houses in cities: ['SEA'] for total cost 0.
+Player 1 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 3 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 3 is in position 1
+Player 1 is in position 2
+Player 2 is in position 3
+
+------------------------------
+Player 3 decides to pass on starting an auction.
+Player 1 decides to pass on starting an auction.
+Player 2 decides to pass on starting an auction.
+
+------------------------------
+
+------------------------------
+Player 2 decides to build in cities: [].
+Player 1 decides to build in cities: [].
+Player 3 decides to build in cities: [].
+Player 2 built houses in cities: [] for total cost 0.
+Player 1 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 3 built houses in cities: [] for total cost 0.
+
+------------------------------
+Player 3 is in position 1
+Player 1 is in position 2
+Player 2 is in position 3
+
+------------------------------
+Player 3 decides to pass on starting an auction.
+Player 1 decides to pass on starting an auction.
+Player 2 decides to pass on starting an auction.
+
+------------------------------
+Player 3 decides to pass on starting an auction.

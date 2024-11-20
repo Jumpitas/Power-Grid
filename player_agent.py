@@ -212,8 +212,6 @@ class PowerGridPlayerAgent(Agent):
             # Synchronize inventory at the start of each cycle
             self.agent.get_inventory()
 
-            create_log() # create or empty log
-
             msg = await self.receive(timeout=30)
             if msg:
                 sender = str(msg.sender).split('/')[0]
@@ -329,24 +327,36 @@ class PowerGridPlayerAgent(Agent):
 
 
                     elif action == "bid":
-                        # Receive bid request
-                        current_bid = data.get("current_bid", 0)
-                        power_plant_data = data.get("power_plant", {})
-                        power_plant = PowerPlant.from_dict(power_plant_data) if power_plant_data else None
-                        # Decide whether to bid or pass
-                        bid_amount = self.decide_bid_amount(current_bid, power_plant)
-                        bid_msg = Message(to=sender)
-                        bid_data = {
-                            "bid": bid_amount
-                        }
-                        bid_msg.body = json.dumps(bid_data)
-                        await self.send(bid_msg)
-                        if bid_amount > current_bid:
-                            pass
-                            update_log(f"Player {self.agent.player_id} bids {bid_amount} for power plant {power_plant.min_bid if power_plant else 'unknown'}.")
+                        wants_powerplant = [True,False] # adds randomness to player choice
+
+                        # wants powerplant
+                        if random.choice(wants_powerplant):
+
+                            # Receive bid request
+                            current_bid = data.get("current_bid", 0)
+                            power_plant_data = data.get("power_plant", {})
+                            power_plant = PowerPlant.from_dict(power_plant_data) if power_plant_data else None
+                            # Decide whether to bid or pass
+                            bid_amount = self.decide_bid_amount(current_bid, power_plant)
+                            bid_msg = Message(to=sender)
+                            bid_data = {
+                                "bid": bid_amount
+                            }
+                            bid_msg.body = json.dumps(bid_data)
+                            await self.send(bid_msg)
+                            if bid_amount > current_bid:
+                                pass
+                                update_log(f"Player {self.agent.player_id} bids {bid_amount} for power plant {power_plant.min_bid if power_plant else 'unknown'}.")
+                            else:
+                                pass
+                                update_log(f"Player {self.agent.player_id} passes on bidding.")
+
+                        # doesn't want powerplant
                         else:
                             pass
-                            update_log(f"Player {self.agent.player_id} passes on bidding.")
+                            bid_amount = 0
+                            update_log(f"Player {self.agent.player_id} passes on bidding, doesn't want power plant.")
+
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                 turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"bid {bid_amount}")

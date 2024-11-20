@@ -20,6 +20,37 @@ from rule_tables import (
 )
 from game_environment import Environment  # Import Environment class
 
+
+def split_parts():
+    print("\n" + "-" * 30 + "\n")
+
+def log_break():
+    with open("log.txt", "a") as log_file:
+        log_file.write("\n" + "-" * 30 + "\n")
+
+#######################  METHODS TO CREATE THE LOG  #########################
+def create_log():
+    """
+    Creates or clears the log file named 'log.txt'.
+    """
+    with open("log.txt", "w") as log_file:
+        # Opening in 'w' mode ensures the file is emptied if it exists.
+        pass
+    print("Log file 'log.txt' created or cleared.")
+
+
+def update_log(message):
+    """
+    Appends the given string to the next line of the log file, called "log.txt".
+
+    :argument:
+        message (str): The message to append to the log file.
+    """
+    with open("log.txt", "a") as log_file:
+        log_file.write(message + "\n")
+    print(f"Message added to log: {message}")
+
+#############################################################################
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,14 +76,19 @@ class GameManagerAgent(Agent):
             if self.current_phase == "setup":
                 await self.setup_phase()
             elif self.current_phase == "phase1":
+                log_break()
                 await self.phase1()
             elif self.current_phase == "phase2":
+                log_break()
                 await self.phase2()
             elif self.current_phase == "phase3":
+                log_break()
                 await self.phase3()
             elif self.current_phase == "phase4":
+                log_break()
                 await self.phase4()
             elif self.current_phase == "phase5":
+                log_break()
                 await self.phase5()
             await asyncio.sleep(1)
 

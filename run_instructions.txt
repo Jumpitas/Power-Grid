@@ -1,0 +1,13 @@
+- To get the live status of the game, corresponding to the environment, phase, etc, there is a UI available on running main.py.
+
+- Guarantee that the venv has the pandas module, and spade dependencies. To run on the VM, after installing pandas, just:
+    - open a terminal
+    - activate the corresponding venv (pyenv activate myproject-env) (example)
+    - For the UI to be formatted, the terminal window should be Full Screen, 16:9, 1920:1080
+    - run main.py (python3 main.py)
+
+- To read the log, there is a file being generated with the run of the script, called 'log.txt'
+    - To get the live updates corresponding to all the actions of the agents from the log file, run the following bash script
+    - while true; do clear; cat log.txt ; sleep 1; done
+
+

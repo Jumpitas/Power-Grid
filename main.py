@@ -9,8 +9,32 @@ from game_environment import Environment
 import globals
 from time import sleep
 
+#######################  METHODS TO CREATE THE LOG  #########################
+def create_log():
+    """
+    Creates or clears the log file named 'log.txt'.
+    """
+    with open("log.txt", "w") as log_file:
+        # Opening in 'w' mode ensures the file is emptied if it exists.
+        pass
+    print("Log file 'log.txt' created or cleared.")
+
+
+def update_log(message):
+    """
+    Appends the given string to the next line of the log file, called "log.txt".
+
+    :argument:
+        message (str): The message to append to the log file.
+    """
+    with open("log.txt", "a") as log_file:
+        log_file.write(message + "\n")
+    print(f"Message added to log: {message}")
+
+#############################################################################
 async def main():
     num_players = 3 # <- modifiable
+    create_log() # reset log
 
     ascii_art = """\n\n\n
                  _______                                                       ______             __        __                            __                     
