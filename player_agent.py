@@ -416,11 +416,12 @@ class PowerGridPlayerAgent(Agent):
                         total_cost = data.get("total_cost", 0)
                         # Update player's cities
                         self.agent.cities_owned.extend(cities)
+                        self.agent.cities_owned = list(set(self.agent.cities_owned))
                         print(f"Player {self.agent.player_id} "
-                              f"chose to purchase city(ies),"
+                              f"chose to purchase {cities},"
                               f" updating them to {self.agent.cities_owned}"
                               f" totaling {total_cost}"
-                              f"while having {self.agent.elektro}")
+                              f" while having {self.agent.elektro}")
                         self.agent.elektro -= total_cost
                         self.agent.update_inventory()
                         #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
@@ -671,8 +672,6 @@ class PowerGridPlayerAgent(Agent):
                     # Add city to build list and deduct costs
                     cities_to_build.append(city)
                     available_elektro -= total_cost
-                    #self.agent.elektro -= total_cost  # Deduct from player's elektro
-                    #self.agent.cities_owned.append(city)  # Add city to owned cities
                     self.agent.update_inventory()  # Update inventory to reflect changes
                     print(f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}")
 
