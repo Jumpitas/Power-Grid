@@ -813,7 +813,6 @@ class GameManagerAgent(Agent):
                     print(
                         f"Game has ended. Player {player_id} has connected {num_cities} cities (required: {end_game_cities}).")
                     return True
-
             return False
 
         async def end_game(self):
