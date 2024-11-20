@@ -699,7 +699,7 @@ class PowerGridPlayerAgent(Agent):
             # Sort cities by priority in descending order
             city_priorities.sort(key=lambda x: x[1], reverse=True)
 
-            # Attempt to build in cities based on priority
+            # Attempt to build only the highest-priority city
             for city, priority in city_priorities:
                 connection_cost = board_map.get_connection_cost(f"player{self.agent.player_id}@localhost", city)
                 building_cost = environment.building_cost[environment.step]
@@ -737,6 +737,9 @@ class PowerGridPlayerAgent(Agent):
                 self.agent.update_inventory()
                 print(
                     f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}, houses: {available_houses}")
+
+                # Stop after building one city
+                break
 
             return cities_to_build
 

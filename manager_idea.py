@@ -800,12 +800,20 @@ class GameManagerAgent(Agent):
                 self.environment.power_plant_market.update_markets()
 
         def check_game_end(self):
-            # Game ends when a player connects a certain number of cities
-            nplayers = len(self.player_jids)
-            end_game_cities = self.environment.game_end_cities
-            for player in self.players.values():
-                if len(player["cities"]) >= end_game_cities:
+            """
+            Check if the game has ended by verifying if any player has connected the required number of cities.
+
+            :return: True if the game has ended, False otherwise.
+            """
+            end_game_cities = self.environment.game_end_cities  # This is already an integer
+
+            for player_id, player_data in self.players.items():
+                num_cities = len(player_data["cities"])
+                if num_cities >= end_game_cities:
+                    print(
+                        f"Game has ended. Player {player_id} has connected {num_cities} cities (required: {end_game_cities}).")
                     return True
+
             return False
 
         async def end_game(self):
