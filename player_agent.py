@@ -390,8 +390,8 @@ class PowerGridPlayerAgent(Agent):
 
                         # Not entering this condition !!!!!!!!!!
                         if winner == f'player{self.agent.player_id}@localhost':
-                            # Add the power plant to the player's state
-                            if power_plant:
+                            # Add the power plant to the player's state and avoid loop duplication
+                            if power_plant and power_plant not in self.agent.power_plants:
                                 self.agent.power_plants.append(power_plant)
                                 self.agent.elektro -= bid  # Deduct the bid amount
                                 self.agent.update_inventory()
