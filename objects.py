@@ -177,6 +177,11 @@ class ResourceMarket:
 
 class PowerPlantMarket:
     def __init__(self, player_count):
+        """
+        Initializes the PowerPlantMarket based on the number of players.
+
+        :param player_count: Number of players in the game.
+        """
         self.player_count = player_count
         self.current_market = []
         self.future_market = []
@@ -186,7 +191,7 @@ class PowerPlantMarket:
     def __repr__(self):
         def format_powerplant(pp):
             # Format each PowerPlant's details as a readable string
-            resource_str = ", ".join(pp.resource_type)  # Combine the resources into a single string
+            resource_str = ", ".join(pp.resource_type) if pp.resource_type else "None"
             return (f"  Min Bid: {pp.min_bid}, "
                     f"Cities: {pp.cities}, "
                     f"Resources: {resource_str}, "
@@ -199,71 +204,88 @@ class PowerPlantMarket:
         future_market_str = "\n".join([format_powerplant(pp) for pp in self.future_market])
 
         # formatted string representation
-        return (f"Current Market:\n{current_market_str},\n\n"
-                f"Future Market:\n{future_market_str},\n\n"
+        return (f"Current Market:\n{current_market_str}\n\n"
+                f"Future Market:\n{future_market_str}\n\n"
                 f"Deck Size: {len(self.deck)}")
 
     def _initialize_markets(self):
         """
         Initializes the Current Market and Future Market with the lowest min_bid power plants.
+        Follows Power Grid's rules for initializing the power plant market.
         """
         # Combine power plant sets
         all_plants = power_plant_plug + power_plant_socket
 
-        # Shuffle them to ensure randomness before sorting
+        # Shuffle them to ensure randomness
         random.shuffle(all_plants)
 
         # Remove power plants based on player count as per game rules
         plug_to_remove, socket_to_remove = remove_cards.get(self.player_count, (0, 0))
-        removed_plug = power_plant_plug[:plug_to_remove] if plug_to_remove else []
-        removed_socket = power_plant_socket[:socket_to_remove] if socket_to_remove else []
 
-        # Filter out the removed power plants
-        all_plants = [plant for plant in all_plants if plant not in removed_plug + removed_socket]
+        removed_plug = []
+        removed_socket = []
+        remaining_plants = []
 
-        # Sort all_plants ascendingly by min_bid
-        all_plants_sorted = sorted(all_plants, key=lambda pp: pp.min_bid)
+        # Remove specified number of plug-in and socket power plants
+        for plant in all_plants:
+            if plant in power_plant_plug and len(removed_plug) < plug_to_remove:
+                removed_plug.append(plant)
+            elif plant in power_plant_socket and len(removed_socket) < socket_to_remove:
+                removed_socket.append(plant)
+            else:
+                remaining_plants.append(plant)
 
-        # Assign the first 4 to Current Market
-        self.current_market = all_plants_sorted[:4]
+        # Assign first 4 to Current Market sorted by min_bid
+        self.current_market = sorted(remaining_plants[:4], key=lambda pp: pp.min_bid)
 
-        # Assign the next 4 to Future Market
-        self.future_market = all_plants_sorted[4:8]
+        # Assign next 4 to Future Market sorted by min_bid
+        self.future_market = sorted(remaining_plants[4:8], key=lambda pp: pp.min_bid)
 
-        # Assign the remaining to Deck
-        self.deck = all_plants_sorted[8:]
+        # Assign the rest to Deck, keeping it shuffled
+        self.deck = remaining_plants[8:]
 
-        #print(f"Initial Current Market: {self.current_market}")
-        #print(f"Initial Future Market: {self.future_market}")
-        #print(f"Deck has {len(self.deck)} power plants.")
+        print(f"Initial Current Market:\n{self.current_market}")
+        print(f"Initial Future Market:\n{self.future_market}")
+        print(f"Deck has {len(self.deck)} power plants.")
 
     def update_markets(self):
         """
         Replenishes the Current and Future Markets from the Deck when needed.
+        Ensures that each market maintains 4 power plants, sorted by min_bid.
         """
-        # Fill Current Market up to 4 plants
+        # Replenish Current Market
         while len(self.current_market) < 4 and self.future_market:
             self.current_market.append(self.future_market.pop(0))
-        self.current_market.sort(key=lambda pp: pp.min_bid)
+        if len(self.current_market) > 0:
+            self.current_market = sorted(self.current_market, key=lambda pp: pp.min_bid)
 
-        # Fill Future Market up to 4 plants
+        # Replenish Future Market
         while len(self.future_market) < 4 and self.deck:
             self.future_market.append(self.deck.pop(0))
-        self.future_market.sort(key=lambda pp: pp.min_bid)
+        if len(self.future_market) > 0:
+            self.future_market = sorted(self.future_market, key=lambda pp: pp.min_bid)
+
+        print(f"Updated Current Market:\n{self.current_market}")
+        print(f"Updated Future Market:\n{self.future_market}")
+        print(f"Deck now has {len(self.deck)} power plants.")
 
     def remove_plant_from_market(self, power_plant):
         """
-        Removes a purchased power plant from the Current or Future Market.
+        Removes a purchased power plant from the Current or Future Market and replenishes the markets.
+
+        :param power_plant: The PowerPlant instance to remove.
         """
         if power_plant in self.current_market:
             self.current_market.remove(power_plant)
+            print(f"Removed {power_plant} from Current Market.")
         elif power_plant in self.future_market:
             self.future_market.remove(power_plant)
+            print(f"Removed {power_plant} from Future Market.")
         else:
-            print(f"Power plant with min_bid {power_plant.min_bid} not found in Current or Future Market.")
+            print(f"Error: Power plant {power_plant} not found in Current or Future Market.")
             return
 
-        # Replenish the markets
+        # Replenish the markets after removal
         self.update_markets()
 
     def draw_new_plant(self):
@@ -273,16 +295,36 @@ class PowerPlantMarket:
         if self.deck:
             new_plant = self.deck.pop(0)
             self.future_market.append(new_plant)
-            self.future_market.sort(key=lambda pp: pp.min_bid)
+            self.future_market = sorted(self.future_market, key=lambda pp: pp.min_bid)
+            print(f"Drew new power plant {new_plant} from Deck to Future Market.")
+        else:
+            print("Deck is empty. No new power plant to draw.")
+
+    def get_current_market(self):
+        """
+        Returns the current market as a list of PowerPlant instances.
+
+        :return: List of current market PowerPlant instances.
+        """
+        return self.current_market
+
+    def get_future_market(self):
+        """
+        Returns the future market as a list of PowerPlant instances.
+
+        :return: List of future market PowerPlant instances.
+        """
+        return self.future_market
+
+    def get_deck_size(self):
+        """
+        Returns the number of power plants remaining in the deck.
+
+        :return: Integer representing the deck size.
+        """
+        return len(self.deck)
 
 
-# Resource bank initialization (optional to track outside ResourceMarket)
-resource_bank = {
-    "coal": 24,
-    "oil": 24,
-    "garbage": 24,
-    "uranium": 12
-}
 
 
 # Data initialization for demonstration

@@ -436,7 +436,7 @@ class PowerGridPlayerAgent(Agent):
                     if action == "build_houses":
                         # Receive map status and current step
                         map_status = data.get("map_status", {})
-                        current_step = data.get("step", 1)
+                        current_step = data.get("step", 2)
                         self.agent.step = current_step
                         # Decide where to build
                         cities_to_build = self.decide_cities_to_build(map_status)
@@ -682,22 +682,31 @@ class PowerGridPlayerAgent(Agent):
             environment = globals.environment_instance
             board_map = environment.map
             available_elektro = self.agent.elektro
+            available_houses = self.agent.houses
             cities_to_build = []
 
-            print(f"Player {self.agent.player_id} has {available_elektro} elektro.")
+            print(f"Player {self.agent.player_id} has {available_elektro} elektro and {available_houses} houses.")
 
+            # Calculate priorities for all cities not owned by the player
+            city_priorities = []
             for city, data in map_status.items():
-                # Skip cities the player already owns
                 if city in self.agent.cities_owned:
                     print(f"Player {self.agent.player_id} already owns city {city}. Skipping.")
                     continue
 
-                # Skip cities that are not available (e.g., fully occupied)
                 if not board_map.is_city_available(city, environment.step):
                     print(f"City {city} is not available. Skipping.")
                     continue
 
-                # Calculate connection cost
+                # Evaluate city priority
+                priority = self.evaluate_city_priority(city, data)
+                city_priorities.append((city, priority))
+
+            # Sort cities by priority in descending order
+            city_priorities.sort(key=lambda x: x[1], reverse=True)
+
+            # Attempt to build in cities based on priority
+            for city, priority in city_priorities:
                 connection_cost = board_map.get_connection_cost(f"player{self.agent.player_id}@localhost", city)
                 building_cost = environment.building_cost[environment.step]
                 total_cost = connection_cost + building_cost
@@ -706,18 +715,30 @@ class PowerGridPlayerAgent(Agent):
                     print(f"Player {self.agent.player_id} cannot afford city {city}. Skipping.")
                     continue
 
-                if city not in self.agent.cities_owned:
-                    # Add city to build list and deduct costs
-                    cities_to_build.append(city)
-                    available_elektro -= total_cost
-                    self.agent.update_inventory()  # Update inventory to reflect changes
-                    print(f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}")
+                if available_houses <= 0:
+                    print(f"Player {self.agent.player_id} has no houses left to build in city {city}. Skipping.")
+                    break
 
-                if available_elektro <= 0:
+                # Add city to build list and deduct costs
+                cities_to_build.append(city)
+                available_elektro -= total_cost
+                available_houses -= 1
+
+                # Update player's owned cities and resources
+                self.agent.cities_owned.append(city)
+                self.agent.elektro = available_elektro
+                self.agent.houses = available_houses
+
+                # Reflect changes in inventory
+                self.agent.update_inventory()
+                print(
+                    f"Player {self.agent.player_id} builds in city {city}. Remaining elektro: {available_elektro}, houses: {available_houses}")
+
+                # Allow multiple purchases in the same turn, but stop if funds or houses run out
+                if available_elektro <= 0 or available_houses <= 0:
                     break
 
             return cities_to_build
-
         def evaluate_city_priority(self, city_tag, city_data):
             """
             Evaluate a city's priority for building.
@@ -734,13 +755,19 @@ class PowerGridPlayerAgent(Agent):
                 if nx.has_path(board_map.map, source=city_tag, target=owned_city):
                     proximity_score += 1
 
-            # Factor in occupancy (fewer owners = higher priority)
-            occupancy_score = max(0, environment.step - len(city_data.get('owners', [])))
+            # Handle occupancy score
+            # If city_data is a list, ensure proper handling
+            if isinstance(city_data, list):
+                owners = city_data  # Assume the list represents the 'owners'
+            elif isinstance(city_data, dict):
+                owners = city_data.get('owners', [])
+            else:
+                owners = []
+
+            occupancy_score = max(0, environment.step - len(owners))
 
             # Combine scores (weights can be adjusted based on strategy)
             return proximity_score + occupancy_score
-
-
 
     async def setup(self):
         print(f"Player {self.player_id} agent starting...")

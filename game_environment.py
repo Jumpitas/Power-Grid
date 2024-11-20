@@ -186,11 +186,11 @@ class Environment:
         """
         cities_list = list(self.map.get_nodes().keys())
         if city not in cities_list:
-            return 1 # tag misquoted
+            return 1  # tag misquoted
 
         l = self.map.get_current_owners(city)
-        if len(l)>=self.step:
-            return 2 # cannot build there
+        if len(l) >= self.step:
+            return 2  # cannot build there
 
         else:
             self.map.update_owner(playerID, city)

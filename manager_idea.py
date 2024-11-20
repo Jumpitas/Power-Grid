@@ -64,7 +64,7 @@ class GameManagerAgent(Agent):
             self.players = {}  # Will be initialized in the setup phase
             self.current_phase = "setup"
             self.round = 1
-            self.current_step = 1  # Game starts at Step 1
+            self.current_step = 2  # Game starts at Step 1
             self.game_over = False
             self.environment = None  # Will be initialized in setup phase
 
@@ -727,12 +727,66 @@ class GameManagerAgent(Agent):
                         player["resources"][rtype] -= resource_needed
 
         def resupply_resource_market(self):
-            # Resupply resources based on the current step and number of players
+            """
+            Resupplies the resource market based on the current step, number of players, and resource replenishment table.
+            Caps resources at their maximum limits for the market.
+            """
             nplayers = len(self.player_jids)
-            rates = self.environment.resource_replenishment[self.current_step]
+            current_step = self.current_step
+            resource_replenishment_table = self.environment.resource_replenishment
+
+            # Ensure valid step and player count
+            if current_step not in resource_replenishment_table:
+                print(f"Invalid game step: {current_step}. Cannot resupply resources.")
+                return
+
+            if nplayers not in resource_replenishment_table[current_step]:
+                print(f"Invalid number of players: {nplayers}. Cannot resupply resources.")
+                return
+
+            # Get replenishment rates for the current step and number of players
+            rates = resource_replenishment_table[current_step][nplayers]
+            resource_market = self.environment.resource_market
+
+            # Apply replenishment
             for resource, amount in rates.items():
-                self.environment.resource_market.in_market[resource] += amount
-                # Cap at maximum (not implemented here)
+                current_quantity = resource_market.in_market.get(resource, 0)
+                max_quantity = resource_market.max_market.get(resource,
+                                                              float('inf'))  # Assume a maximum capacity exists
+                new_quantity = min(current_quantity + amount, max_quantity)
+
+                # Update the resource market with the new quantity
+                resource_market.in_market[resource] = new_quantity
+                print(f"Resupplied {resource}: {current_quantity} -> {new_quantity} (Added: {amount})")
+
+        def update_resource_prices(resource_market, price_table):
+            """
+            Updates the resource prices in the market based on current quantities.
+
+            :param resource_market: A dictionary containing the quantities of resources in the market.
+            :param price_table: A dictionary defining the pricing for each resource based on quantity ranges.
+            """
+            resource_prices = {}
+
+            for resource, quantity in resource_market.items():
+                if resource not in price_table:
+                    print(f"No pricing information available for {resource}. Skipping.")
+                    continue
+
+                # Uranium has direct mapping, handle it separately
+                if resource == "uranium":
+                    for qty, price in price_table[resource].items():
+                        if quantity >= qty:
+                            resource_prices[resource] = price
+                            break
+                else:
+                    # Other resources use ranges
+                    for range_key, price in sorted(price_table[resource].items(), reverse=True):
+                        if isinstance(range_key, tuple) and range_key[0] <= quantity <= range_key[1]:
+                            resource_prices[resource] = price
+                            break
+
+            return resource_prices
 
         def update_power_plant_market_phase5(self):
             # Remove the lowest-numbered power plant from the current market and replace it
