@@ -3,15 +3,20 @@ from time import sleep
 import os
 import asyncio
 import random
+
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 import json
+
+
 from objects import PowerPlant
 from game_environment import Environment
 from rule_tables import *
+import globals
+import networkx as nx
 
-######################################################################
+#######################  METHODS TO FORMAT STRINGS  ###########################
 
 # methods to format strings at terminal outputs, don t need to be defined within the class
 def clear_screen():
@@ -35,10 +40,30 @@ def edit_order(player_list):
 
     return result
 
+#######################  METHODS TO CREATE THE LOG  #########################
+def create_log():
+    """
+    Creates or clears the log file named 'log.txt'.
+    """
+    with open("log.txt", "w") as log_file:
+        # Opening in 'w' mode ensures the file is emptied if it exists.
+        pass
+    print("Log file 'log.txt' created or cleared.")
 
-######################################################################
-import globals
-import networkx as nx
+
+def update_log(message):
+    """
+    Appends the given string to the next line of the log file, called "log.txt".
+
+    :argument:
+        message (str): The message to append to the log file.
+    """
+    with open("log.txt", "a") as log_file:
+        log_file.write(message + "\n")
+    print(f"Message added to log: {message}")
+
+#############################################################################
+
 
 
 class PowerGridPlayerAgent(Agent):
@@ -101,6 +126,7 @@ class PowerGridPlayerAgent(Agent):
             'position': self.position,
             'connected_cities': self.connected_cities
         }
+
     def decide_cities_to_power(self):
         """
         Decides how many cities to power based on the player's resources, power plants, and owned cities.
@@ -186,6 +212,8 @@ class PowerGridPlayerAgent(Agent):
             # Synchronize inventory at the start of each cycle
             self.agent.get_inventory()
 
+            create_log() # create or empty log
+
             msg = await self.receive(timeout=30)
             if msg:
                 sender = str(msg.sender).split('/')[0]
@@ -194,7 +222,7 @@ class PowerGridPlayerAgent(Agent):
                 try:
                     data = json.loads(msg.body)
                 except json.JSONDecodeError:
-                    print(f"Player {self.agent.player_id} received invalid JSON.")
+                    update_log(f"Player {self.agent.player_id} received invalid JSON.")
                     return
 
                 phase = data.get("phase")
@@ -205,14 +233,14 @@ class PowerGridPlayerAgent(Agent):
                     player_order = data.get("player_order")
                     self.agent.position = player_order
                     self.agent.update_inventory()
-                    print(f"Player {self.agent.player_id} received setup information. Position: {player_order}")
+                    update_log(f"Player {self.agent.player_id} received setup information. Position: {player_order}")
 
                 elif phase == "phase1":
                     # Handle player order notification
                     player_order = data.get("player_order")
                     self.agent.position = player_order
                     self.agent.update_inventory()
-                    #print(f"Player {self.agent.player_id} is in position {player_order}")
+                    update_log(f"Player {self.agent.player_id} is in position {player_order}")
                     self.agent.print_status(phase=phase, round_no=data.get("round"), order=data.get("list_order_complete"),
                                             turn=self.agent.player_id, subphase=action, decision = "None")
 
@@ -232,7 +260,7 @@ class PowerGridPlayerAgent(Agent):
                                 }
                                 choice_msg.body = json.dumps(choice_data)
                                 await self.send(choice_msg)
-                                print(f"Player {self.agent.player_id} decides to pass on starting an auction.")
+                                update_log(f"Player {self.agent.player_id} decides to pass on starting an auction.")
                                 self.agent.print_status(phase=phase, round_no=data.get("round"), order=data.get("list_order_complete"),
                                                         turn=self.agent.player_id,
                                                         subphase=action, decision="pass")
@@ -247,7 +275,7 @@ class PowerGridPlayerAgent(Agent):
                                     }
                                     choice_msg.body = json.dumps(choice_data)
                                     await self.send(choice_msg)
-                                    print(f"Player {self.agent.player_id} chooses to auction power plant {chosen_plant_number}.")
+                                    update_log(f"Player {self.agent.player_id} chooses to auction power plant {chosen_plant_number}.")
                                     self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                             turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                             subphase=action, decision="auction")
@@ -261,7 +289,7 @@ class PowerGridPlayerAgent(Agent):
                                     }
                                     choice_msg.body = json.dumps(choice_data)
                                     await self.send(choice_msg)
-                                    print(f"Player {self.agent.player_id} cannot afford any power plant and passes.")
+                                    update_log(f"Player {self.agent.player_id} cannot afford any power plant and passes.")
                                     self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                             turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                             subphase=action, decision="pass")
@@ -277,7 +305,7 @@ class PowerGridPlayerAgent(Agent):
                             }
                             choice_msg.body = json.dumps(choice_data)
                             await self.send(choice_msg)
-                            print(f"Player {self.agent.player_id} must auction power plant {chosen_plant_number} (first round).")
+                            update_log(f"Player {self.agent.player_id} must auction power plant {chosen_plant_number} (first round).")
                             self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                     turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                     subphase=action, decision="auction")
@@ -294,7 +322,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         bid_msg.body = json.dumps(bid_data)
                         await self.send(bid_msg)
-                        print(f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
+                        update_log(f"Player {self.agent.player_id} places initial bid of {bid_amount} on power plant {power_plant.min_bid if power_plant else 'unknown'}.")
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                 turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"bid {bid_amount}")
@@ -315,10 +343,10 @@ class PowerGridPlayerAgent(Agent):
                         await self.send(bid_msg)
                         if bid_amount > current_bid:
                             pass
-                            #print(f"Player {self.agent.player_id} bids {bid_amount} for power plant {power_plant.min_bid if power_plant else 'unknown'}.")
+                            update_log(f"Player {self.agent.player_id} bids {bid_amount} for power plant {power_plant.min_bid if power_plant else 'unknown'}.")
                         else:
                             pass
-                            #print(f"Player {self.agent.player_id} passes on bidding.")
+                            update_log(f"Player {self.agent.player_id} passes on bidding.")
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                 turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"bid {bid_amount}")
@@ -336,7 +364,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         discard_msg.body = json.dumps(discard_data)
                         await self.send(discard_msg)
-                        #print(f"Player {self.agent.player_id} discards power plant {discard_number}.")
+                        update_log(f"Player {self.agent.player_id} discards power plant {discard_number}.")
                         self.agent.print_status(phase=phase, round_no=data.get("round"),
                                                 turn=self.agent.player_id, order=data.get("list_order_complete"),
                                                 subphase=action, decision=f"discard {discard_number}")
@@ -357,16 +385,16 @@ class PowerGridPlayerAgent(Agent):
                                 self.agent.power_plants.append(power_plant)
                                 self.agent.elektro -= bid  # Deduct the bid amount
                                 self.agent.update_inventory()
-                                print("Bid ammount: ", bid)
-                                print(f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
+                                update_log(f"Bid ammount: {bid}")
+                                update_log(f"Winner {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
 
 
-                                #print(f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
+                                update_log(f"Player {self.agent.player_id} won the auction for power plant {power_plant.min_bid} with bid {bid}.")
                         else:
-                            print(f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
+                            update_log(f"Player {self.agent.player_id} currently has {self.agent.elektro} elektro, after bidding")
 
 
-                            #print(f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
+                            update_log(f"Player {self.agent.player_id} observed that player {winner} won the auction for power plant {power_plant.min_bid if power_plant else 'unknown'} with bid {bid}.")
 
                 elif phase == "phase3":
                     if action == "buy_resources":
@@ -408,7 +436,7 @@ class PowerGridPlayerAgent(Agent):
                         }
                         build_msg.body = json.dumps(build_data)
                         await self.send(build_msg)
-                        #print(f"Player {self.agent.player_id} decides to build in cities: {cities_to_build}.")
+                        update_log(f"Player {self.agent.player_id} decides to build in cities: {cities_to_build}.")
 
                     elif action == "build_result":
                         # Handle build result
@@ -424,7 +452,7 @@ class PowerGridPlayerAgent(Agent):
                               f" while having {self.agent.elektro}")
                         self.agent.elektro -= total_cost
                         self.agent.update_inventory()
-                        #print(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
+                        update_log(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
                 elif phase == "phase5":
                     if action == "power_cities_request":
