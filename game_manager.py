@@ -154,6 +154,7 @@ class GameManagerAgent(Agent):
             update_log("Moving to Phase 1")
 
         async def phase1(self):
+
             update_log("Phase 1: Determine Player Order")
             # Determine player order based on number of cities and largest power plant
             sorted_players = self.determine_player_order()
@@ -335,12 +336,12 @@ class GameManagerAgent(Agent):
                 highest_bidder["has_bought_power_plant"] = True
                 update_log(f"{highest_bidder['jid']} wins the auction for power plant {power_plant.min_bid} with a bid of {current_bid} Elektro.")
 
-                update_log("Highest bidder: ", highest_bidder)
+                update_log(f"Highest bidder: {highest_bidder}")
                 # Handle discard if necessary
                 if len(highest_bidder["power_plants"]) > 3:
                     await self.handle_power_plant_discard(highest_bidder)
 
-                update_log("Highest bidder after waiting for discard: ", highest_bidder)
+                update_log(f"Highest bidder after waiting for discard: {highest_bidder}")
 
                 # Update the power plant market
                 self.environment.power_plant_market.remove_plant_from_market(power_plant)
@@ -662,7 +663,7 @@ class GameManagerAgent(Agent):
                     f"Player {player_id}: Cities owned = {len(player_data['cities'])}, Cities = {player_data['cities']}")
 
             # Check for game end conditions
-            if self.check_game_end():
+            if await self.check_game_end():
                 await self.end_game()
             else:
                 # Proceed to the next round
@@ -790,41 +791,112 @@ class GameManagerAgent(Agent):
                 # Update the markets
                 self.environment.power_plant_market.update_markets()
 
-        def check_game_end(self):
+        async def check_game_end(self):
             """
-            Check if the game has ended by verifying if any player has connected the required number of cities.
+            Check if the game has ended by querying players for their owned cities.
+            Interacts with player agents to retrieve the correct city count.
 
             :return: True if the game has ended, False otherwise.
             """
             end_game_cities = self.environment.game_end_cities
 
+            # Dictionary to store player city counts
+            player_city_counts = {}
+
+            # Query each player for their owned cities
             for player_id, player_data in self.players.items():
-                num_cities = len(player_data["cities"])
-                if num_cities >= end_game_cities:
+                # Send a message to the player to retrieve their owned cities
+                msg = Message(to=player_data["jid"])
+                msg.body = json.dumps({
+                    "phase": "check_game_end",
+                    "action": "get_cities_owned"
+                })
+                await self.send(msg)
+
+                # Await the player's response
+                response = await self.receive(timeout=10)  # Timeout of 10 seconds
+                if response:
+                    data = json.loads(response.body)
+                    if data.get("phase") == "check_game_end" and data.get("action") == "cities_owned":
+                        cities_owned = data.get("cities_owned", [])
+                        player_city_counts[player_id] = len(cities_owned)
+
+                        update_log(f"Player {player_id} owns {len(cities_owned)} cities.")
+                    else:
+                        update_log(f"Unexpected response from Player {player_id}: {data}")
+                else:
+                    update_log(f"No response from Player {player_id}. Assuming 0 cities.")
+                    player_city_counts[player_id] = 0
+
+            # Check if any player meets or exceeds the required number of cities
+            for player_id, city_count in player_city_counts.items():
+                if city_count >= end_game_cities:
                     update_log(
-                        f"Game has ended. Player {player_id} has connected {num_cities} cities (required: {end_game_cities}).")
+                        f"Game has ended. Player {player_id} has connected {city_count} cities (required: {end_game_cities}).")
                     return True
 
             return False
 
         async def end_game(self):
+            """
+            End the game by querying players for their cities powered and their Elektro balances.
+            Determine the winner based on game rules.
+            """
             update_log("Game Over. Calculating final scores.")
+
+            # Dictionary to store player cities powered and Elektro
+            player_stats = {}
+
+            # Query each player for their cities powered and Elektro
+            for player_id, player_data in self.players.items():
+                # Send a message to the player to retrieve their powered cities and Elektro
+                msg = Message(to=player_data["jid"])
+                msg.body = json.dumps({
+                    "phase": "end_game",
+                    "action": "get_final_stats"
+                })
+                await self.send(msg)
+
+                # Await the player's response
+                response = await self.receive(timeout=10)  # Timeout of 10 seconds
+                if response:
+                    data = json.loads(response.body)
+                    if data.get("phase") == "end_game" and data.get("action") == "final_stats":
+                        cities_powered = data.get("cities_powered", 0)
+                        elektro = data.get("elektro", 0)
+                        player_stats[player_id] = {
+                            "cities_powered": cities_powered,
+                            "elektro": elektro
+                        }
+                        update_log(f"Player {player_id} powered {cities_powered} cities with {elektro} Elektro.")
+                    else:
+                        update_log(f"Unexpected response from Player {player_id}: {data}")
+                        player_stats[player_id] = {"cities_powered": 0, "elektro": 0}
+                else:
+                    update_log(f"No response from Player {player_id}. Assuming 0 cities powered and 0 Elektro.")
+                    player_stats[player_id] = {"cities_powered": 0, "elektro": 0}
+
             # Determine the winner
-            max_cities_powered = 0
-            winner = None
-            for player in self.players.values():
-                cities_powered = self.calculate_cities_powered(player)
-                if cities_powered > max_cities_powered:
-                    max_cities_powered = cities_powered
-                    winner = player
-                elif cities_powered == max_cities_powered:
-                    # Tie-breaker: player with more elektro
-                    player_elektro = player["elektro"]
-                    winner_elektro = winner["elektro"]
-                    update_log("player[elektro]", {player_elektro})
-                    update_log("winner[elektro]", {winner_elektro})
-                    if player["elektro"] > winner["elektro"]:
-                        winner = player
+            max_cities_powered = max((stats["cities_powered"] for stats in player_stats.values()), default=0)
+            potential_winners = [
+                pid for pid, stats in player_stats.items() if stats["cities_powered"] == max_cities_powered
+            ]
+
+            if len(potential_winners) == 1:
+                # Single winner based on cities powered
+                winner_id = potential_winners[0]
+            else:
+                # Tie-breaker: player with the most Elektro
+                winner_id = max(
+                    potential_winners,
+                    key=lambda pid: player_stats[pid]["elektro"]
+                )
+
+            winner = self.players[winner_id]
+            winner_stats = player_stats[winner_id]
+            update_log(
+                f"Game has ended. Winner is Player {winner['jid']} with {winner_stats['cities_powered']} cities powered and {winner_stats['elektro']} Elektro."
+            )
 
             # Announce the winner to all players
             for player in self.players.values():
@@ -832,13 +904,12 @@ class GameManagerAgent(Agent):
                 msg.body = json.dumps({
                     "phase": "game_over",
                     "winner": winner["jid"],
-                    "final_elektro": winner["elektro"]
+                    "final_cities_powered": winner_stats["cities_powered"],
+                    "final_elektro": winner_stats["elektro"]
                 })
                 await self.send(msg)
+
             self.game_over = True
-
-
-
     def __init__(self, jid, password, player_jids):
         super().__init__(jid, password)
         self.player_jids = player_jids

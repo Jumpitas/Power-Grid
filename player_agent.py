@@ -469,7 +469,6 @@ class PowerGridPlayerAgent(Agent):
                               f" updating them to {self.agent.cities_owned}"
                               f" totaling {total_cost}"
                               f" while having {self.agent.elektro}")
-                        self.agent.elektro -= total_cost
                         self.agent.update_inventory()
                         update_log(f"Player {self.agent.player_id} built houses in cities: {cities} for total cost {total_cost}.")
 
@@ -495,6 +494,19 @@ class PowerGridPlayerAgent(Agent):
                                                 decision=f"Powered {cities_powered} for total cost {resources_consumed}.")
                         await self.send(response)
 
+                elif phase == "check_game_end":
+                    if action == "get_cities_owned":
+                        # Respond with the list of cities owned
+                        response = Message(to=sender)
+                        response.body = json.dumps({
+                            "phase": "check_game_end",
+                            "action": "cities_owned",
+                            "cities_owned": self.agent.cities_owned  # Assuming this attribute tracks owned cities
+                        })
+                        await self.send(response)
+                        update_log(
+                            f"Player {self.agent.player_id} responded with cities_owned: {self.agent.cities_owned}")
+
 
                 elif phase == "game_over":
                     # Handle game over
@@ -505,6 +517,21 @@ class PowerGridPlayerAgent(Agent):
                     else:
                         update_log(f"Player {self.agent.player_id} has lost. Winner: {winner} with {final_elektro} Elektro.")
                     await self.agent.stop()
+
+                elif phase == "end_game" and action == "get_final_stats":
+                    # Respond with the number of cities powered and current Elektro
+                    cities_powered = len(self.agent.cities_powered)  # Adjust based on actual data structure
+                    elektro = self.agent.elektro  # Current Elektro balance
+                    response = Message(to=sender)
+                    response.body = json.dumps({
+                        "phase": "end_game",
+                        "action": "final_stats",
+                        "cities_powered": cities_powered,
+                        "elektro": elektro
+                    })
+                    await self.send(response)
+                    update_log(
+                        f"Player {self.agent.player_id} reports {cities_powered} cities powered and {elektro} Elektro.")
 
                 else:
                     update_log(f"Player {self.agent.player_id} received an unknown message: {msg.body}")
@@ -617,21 +644,26 @@ class PowerGridPlayerAgent(Agent):
 
         def decide_resources_to_buy(self, resource_market):
             """
-            Decide which resources to buy based on the power plants owned and the price table.
-            Ensures that the player does not spend more Elektro than they have.
+            Decide which resources to buy based on the power plants owned, their storage capacity, and the price table.
+            Ensures the player does not spend more Elektro than they have and does not exceed storage capacity.
             Returns a dictionary of purchases and the total cost.
             """
             purchases = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
             total_cost = 0
 
-            # Step 1: Aggregate total resource needs across all power plants
+            # Step 1: Calculate the total storage limits and current needs for each resource type
             resource_needs = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+            resource_storage_limits = {"coal": 0, "oil": 0, "garbage": 0, "uranium": 0}
+
             for plant in self.agent.power_plants:
                 if plant.resource_type and plant.resource_num > 0:
                     for rtype in plant.resource_type:
-                        resource_needs[rtype] += plant.resource_num
+                        # Calculate remaining capacity for the resource in this plant
+                        remaining_capacity = plant.available_storage - sum(plant.storage.values())
+                        resource_needs[rtype] += max(plant.resource_num - plant.storage.get(rtype, 0), 0)
+                        resource_storage_limits[rtype] += remaining_capacity
 
-            # Step 2: Define a helper to get sorted unit costs for each resource type
+            # Step 2: Helper function to get sorted unit costs for each resource type
             def get_sorted_unit_costs(resource_type):
                 """
                 Returns a list of unit costs sorted from cheapest to most expensive.
@@ -642,77 +674,70 @@ class PowerGridPlayerAgent(Agent):
                     return unit_costs
 
                 if resource_type == "uranium":
-                    # Iterate from highest units (cheapest) to lowest units (expensive)
-                    for unit in range(12, 0, -1):  # Adjust based on your price_table
-                        cost = price_table["uranium"].get(unit, float('inf'))
-                        if cost != float('inf') and unit <= available_units:
-                            unit_costs.extend([cost] * unit)
+                    for unit, cost in price_table["uranium"].items():
+                        if unit <= available_units:
+                            unit_costs.append(cost)
                 else:
-                    # For other resources, iterate through sorted price ranges by ascending cost
-                    sorted_ranges = sorted(price_table[resource_type].items(), key=lambda x: x[1])
-                    for range_key, price in sorted_ranges:
-                        if isinstance(range_key, tuple) and len(range_key) == 2:
-                            start, end = range_key
-                            for unit in range(start, end + 1):
-                                if unit <= resource_market.get(resource_type, 0):
+                    for range_key, price in price_table[resource_type].items():
+                        if isinstance(range_key, tuple):
+                            for unit in range(range_key[0], range_key[1] + 1):
+                                if unit <= available_units:
                                     unit_costs.append(price)
-                # Sort unit costs from cheapest to most expensive
                 unit_costs.sort()
                 return unit_costs
 
-            # Step 3: Create a list of resources sorted by their cheapest unit cost
+            # Step 3: Create a sorted list of resources by cheapest unit cost
             resource_priority = []
             for resource in ["coal", "oil", "garbage", "uranium"]:
                 unit_costs = get_sorted_unit_costs(resource)
                 if unit_costs:
-                    cheapest_cost = min(unit_costs)
-                    resource_priority.append((cheapest_cost, resource))
-            # Sort resources by their cheapest unit cost first
-            resource_priority.sort()
+                    resource_priority.append((unit_costs[0], resource))
+            resource_priority.sort(key=lambda x: x[0])
 
-            # Step 4: Iterate through resources in order of cheapest first
+            # Step 4: Buy resources, considering storage and affordability
             for cost, resource in resource_priority:
-                # Skip if already bought enough of this resource
-                if resource_needs[resource] <= purchases[resource]:
+                # Determine how much can be bought based on needs, availability, and storage
+                current_stock = self.agent.resources.get(resource, 0) + purchases[resource]
+                max_storage = resource_storage_limits[resource]
+                if current_stock >= max_storage:
+                    update_log(
+                        f"{resource.capitalize()} storage at capacity ({current_stock}/{max_storage}). Skipping.")
                     continue
 
-                # Skip if cannot afford even one unit
-                if self.agent.elektro < cost:
-                    update_log(f"Cannot afford even one unit of {resource} (Cost: {cost} Elektro).")
-                    continue
-
-                available = resource_market.get(resource, 0)
-                if available <= 0:
-                    update_log(f"No available {resource} to purchase.")
-                    continue
-
-                # Determine how many units can be bought based on needs, availability, and affordability
                 needed = resource_needs[resource] - purchases[resource]
-                max_affordable = self.agent.elektro // cost
-                units_to_buy = min(needed, available, max_affordable)
+                available = resource_market.get(resource, 0)
+                max_additional_storage = max_storage - current_stock
+
+                if needed <= 0 or available <= 0:
+                    update_log(f"No {resource} needed or available. Skipping.")
+                    continue
+
+                # Determine how many units can be bought
+                units_to_buy = min(needed, available, max_additional_storage)
+                max_affordable_units = self.agent.elektro // cost
+                units_to_buy = min(units_to_buy, max_affordable_units)
 
                 if units_to_buy <= 0:
-                    update_log(f"No units of {resource} can be bought (Units to Buy: {units_to_buy}).")
+                    update_log(f"Cannot afford {resource} at {cost} Elektro/unit.")
                     continue
 
-                # Calculate total cost for the units
+                # Calculate total cost and enforce spending limit
                 purchase_cost = units_to_buy * cost
-
-                # Enforce spending limit (no single purchase exceeds 60% of elektro)
                 if purchase_cost > self.agent.elektro * 0.6:
                     units_affordable = int((self.agent.elektro * 0.6) // cost)
                     units_to_buy = min(units_to_buy, units_affordable)
                     purchase_cost = units_to_buy * cost
-                    if units_to_buy <= 0:
-                        update_log(f"Purchase cost for {resource} exceeds 60% of elektro. Skipping.")
-                        continue
+
+                if units_to_buy <= 0:
+                    update_log(f"Purchase of {resource} exceeds spending limit. Skipping.")
+                    continue
 
                 # Register the purchase
                 purchases[resource] += units_to_buy
                 total_cost += purchase_cost
                 self.agent.elektro -= purchase_cost
 
-                update_log(f"Placing purchase: {units_to_buy} of {resource} for {purchase_cost} elektro.")
+                update_log(f"Bought {units_to_buy} of {resource} for {purchase_cost} Elektro.")
 
             # Final Debugging Output
             update_log(
