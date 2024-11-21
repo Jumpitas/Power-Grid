@@ -103,18 +103,15 @@ class Environment:
             self.players[player_name]['position'] = position
 
         # 5) Create the Resource Market
-        self.resource_market = ResourceMarket() # ver os comentarios la
+        self.resource_market = ResourceMarket()
 
         # 6) Corresponds to the resource bank variable on the objects.py
-        # 7) Corresponds to the 3 variable defined above (dictionarynception)
+        # 7) Corresponds to the 3 variable defined above
 
         # 8) 9) Create the Power Plant Market
         self.power_plant_market = PowerPlantMarket(player_no)
 
     def print_environment(self):
-        # prints 100 blank lines while os.system('clear') not working
-        #clear_screen()
-
         print("\n##########################################################   CURRENT ENVIRONMENT STATUS   ##########################################################  \n")
         ################## Resource Market Status ##################
 

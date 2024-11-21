@@ -1,4 +1,4 @@
-# manager_idea.py
+# game_manager.py
 
 import asyncio
 from spade.agent import Agent
@@ -137,7 +137,7 @@ class GameManagerAgent(Agent):
                 raise ValueError("order_players should contain integer player IDs.")
 
             self.player_order = [self.player_id_to_jid[p] for p in self.environment.order_players]
-            print(f'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n{self.player_order}\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+            #print(f'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n{self.player_order}\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
 
             # Notify all players about the setup phase completion
             for jid in self.player_jids:

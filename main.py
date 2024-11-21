@@ -3,7 +3,7 @@
 import asyncio
 import os
 
-from manager_idea import GameManagerAgent  # Adjusted import to match the module name
+from game_manager import GameManagerAgent  # Adjusted import to match the module name
 from player_agent import PowerGridPlayerAgent
 from game_environment import Environment
 import globals
