@@ -9,8 +9,6 @@ from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 import json
 
-from xdg.Locale import update
-
 from objects import PowerPlant
 from game_environment import Environment
 from rule_tables import *
@@ -188,7 +186,7 @@ class PowerGridPlayerAgent(Agent):
         print(f"The current phase is {phase} and sub phase is {subphase}")
         print(f"The decision is: {decision}")
         globals.environment_instance.print_environment()
-        sleep(2)
+        sleep(1)
         os.system("clear")
 
 
@@ -512,7 +510,7 @@ class PowerGridPlayerAgent(Agent):
                     update_log(f"Player {self.agent.player_id} received an unknown message: {msg.body}")
             else:
                 update_log(f"Player {self.agent.player_id} did not receive any message.")
-            await asyncio.sleep(1)  # Yield control to event loop
+            await asyncio.sleep(0.2)  # Yield control to event loop
 
 
         # Decision-making methods

@@ -137,7 +137,6 @@ class GameManagerAgent(Agent):
                 raise ValueError("order_players should contain integer player IDs.")
 
             self.player_order = [self.player_id_to_jid[p] for p in self.environment.order_players]
-            #print(f'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n{self.player_order}\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
 
             # Notify all players about the setup phase completion
             for jid in self.player_jids:
@@ -152,10 +151,10 @@ class GameManagerAgent(Agent):
 
             # Proceed to Phase 1
             self.current_phase = "phase1"
-            print("Moving to Phase 1")
+            update_log("Moving to Phase 1")
 
         async def phase1(self):
-            print("Phase 1: Determine Player Order")
+            update_log("Phase 1: Determine Player Order")
             # Determine player order based on number of cities and largest power plant
             sorted_players = self.determine_player_order()
 
@@ -174,10 +173,10 @@ class GameManagerAgent(Agent):
 
             # Proceed to Phase 2
             self.current_phase = "phase2"
-            print("Moving to Phase 2")
+            update_log("Moving to Phase 2")
 
         async def phase2(self):
-            print("Phase 2: Auction Power Plants")
+            update_log("Phase 2: Auction Power Plants")
             # Reset players' auction status
             for player in self.players.values():
                 player["has_bought_power_plant"] = False
@@ -191,7 +190,7 @@ class GameManagerAgent(Agent):
 
             # End of Phase 2
             self.current_phase = "phase3"
-            print("Moving to Phase 3")
+            update_log("Moving to Phase 3")
 
         async def handle_player_auction_choice(self, player):
             """
@@ -224,15 +223,15 @@ class GameManagerAgent(Agent):
                     data = json.loads(response.body)
                     choice = data.get("choice", "pass")
                 except json.JSONDecodeError:
-                    print(f"Invalid JSON response from {player['jid']}. Treating as pass.")
+                    #print(f"Invalid JSON response from {player['jid']}. Treating as pass.")
                     choice = "pass"
             else:
-                print(f"No response from {player['jid']}. Treating as pass.")
+                update_log(f"No response from {player['jid']}. Treating as pass.")
                 choice = "pass"
 
             if choice == "pass" and can_pass:
                 player["has_bought_power_plant"] = True
-                print(f"{player['jid']} chooses to pass on starting an auction.")
+                update_log(f"{player['jid']} chooses to pass on starting an auction.")
             elif choice == "auction":
                 chosen_plant_number = data.get("power_plant_number", None)
                 chosen_plant = self.get_power_plant_by_number(chosen_plant_number)
@@ -240,12 +239,12 @@ class GameManagerAgent(Agent):
                     await self.conduct_auction(chosen_plant, player)
                 else:
                     # Invalid choice, treat as pass
-                    print(f"Invalid power plant choice by {player['jid']}. They pass this auction phase.")
+                    update_log(f"Invalid power plant choice by {player['jid']}. They pass this auction phase.")
                     player["has_bought_power_plant"] = True
             else:
                 # Invalid choice or player couldn't pass
                 player["has_bought_power_plant"] = True
-                print(f"{player['jid']} cannot afford any power plant and passes.")
+                update_log(f"{player['jid']} cannot afford any power plant and passes.")
 
         async def conduct_auction(self, power_plant, starting_player):
             active_players = [p for p in self.get_players_in_order() if not p["has_bought_power_plant"]]
@@ -270,11 +269,11 @@ class GameManagerAgent(Agent):
                     data = json.loads(response.body)
                     bid = data.get("bid", 0)
                 except json.JSONDecodeError:
-                    print(f"Invalid JSON bid from {starting_player['jid']}. Starting bid is {base_min_bid}.")
+                    #print(f"Invalid JSON bid from {starting_player['jid']}. Starting bid is {base_min_bid}.")
                     bid = base_min_bid
             else:
                 # No response; starting player must bid at least the base_min_bid
-                print(f"No response from {starting_player['jid']} for initial bid. Starting bid is {base_min_bid}.")
+                update_log(f"No response from {starting_player['jid']} for initial bid. Starting bid is {base_min_bid}.")
                 bid = base_min_bid
 
             if bid >= base_min_bid and bid <= starting_player["elektro"]:
@@ -284,7 +283,7 @@ class GameManagerAgent(Agent):
                 # Invalid bid; starting player must bid at least the base_min_bid
                 current_bid = base_min_bid
                 highest_bidder = starting_player
-                print(f"{starting_player['jid']} made an invalid initial bid. Starting bid is {base_min_bid}.")
+                update_log(f"{starting_player['jid']} made an invalid initial bid. Starting bid is {base_min_bid}.")
 
             bidding_active = True
             bidders = active_players.copy()
@@ -309,21 +308,21 @@ class GameManagerAgent(Agent):
                             data = json.loads(response.body)
                             bid = data.get("bid", 0)
                         except json.JSONDecodeError:
-                            print(f"Invalid JSON bid from {player['jid']}. They pass.")
+                            #print(f"Invalid JSON bid from {player['jid']}. They pass.")
                             bid = 0
 
                         if bid > current_bid and bid <= player["elektro"]:
                             current_bid = bid
                             highest_bidder = player
-                            print(f"{player['jid']} bids {bid} for power plant {power_plant.min_bid}.")
+                            update_log(f"{player['jid']} bids {bid} for power plant {power_plant.min_bid}.")
                         else:
-                            print(f"{player['jid']} passes or cannot outbid {current_bid}.")
+                            update_log(f"{player['jid']} passes or cannot outbid {current_bid}.")
                             bidders.remove(player)
                             if len(bidders) == 1:
                                 bidding_active = False
                                 break
                     else:
-                        print(f"No response from {player['jid']}. They pass.")
+                        update_log(f"No response from {player['jid']}. They pass.")
                         bidders.remove(player)
                         if len(bidders) == 1:
                             bidding_active = False
@@ -334,14 +333,14 @@ class GameManagerAgent(Agent):
                 highest_bidder["elektro"] -= current_bid
                 highest_bidder["power_plants"].append(power_plant)
                 highest_bidder["has_bought_power_plant"] = True
-                print(f"{highest_bidder['jid']} wins the auction for power plant {power_plant.min_bid} with a bid of {current_bid} Elektro.")
+                update_log(f"{highest_bidder['jid']} wins the auction for power plant {power_plant.min_bid} with a bid of {current_bid} Elektro.")
 
-                print("Highest bidder: ", highest_bidder)
+                update_log("Highest bidder: ", highest_bidder)
                 # Handle discard if necessary
                 if len(highest_bidder["power_plants"]) > 3:
                     await self.handle_power_plant_discard(highest_bidder)
 
-                print("Highest bidder after waiting for discard: ", highest_bidder)
+                update_log("Highest bidder after waiting for discard: ", highest_bidder)
 
                 # Update the power plant market
                 self.environment.power_plant_market.remove_plant_from_market(power_plant)
@@ -363,7 +362,7 @@ class GameManagerAgent(Agent):
                 if starting_player != highest_bidder and not starting_player["has_bought_power_plant"]:
                     await self.handle_player_auction_choice(starting_player)
             else:
-                print("Auction ended with no winner.")
+                update_log("Auction ended with no winner.")
 
         def get_power_plant_by_number(self, number):
             """
@@ -402,23 +401,23 @@ class GameManagerAgent(Agent):
                 discarded_plant = self.get_player_power_plant_by_number(player, discard_number)
                 if discarded_plant and discarded_plant != player["power_plants"][-1]:
                     player["power_plants"].remove(discarded_plant)
-                    print(f"{player['jid']} discarded power plant {discarded_plant.min_bid}.")
+                    update_log(f"{player['jid']} discarded power plant {discarded_plant.min_bid}.")
                 else:
                     # Invalid choice; automatically discard the oldest plant (excluding the just bought one)
                     if discardable_plants:
                         plant_to_discard = discardable_plants[0]
                         player["power_plants"].remove(plant_to_discard)
-                        print(f"Invalid discard number from {player['jid']}. Automatically discarding power plant {plant_to_discard.min_bid}.")
+                        update_log(f"Invalid discard number from {player['jid']}. Automatically discarding power plant {plant_to_discard.min_bid}.")
                     else:
-                        print(f"No discardable plants for {player['jid']}.")
+                        update_log(f"No discardable plants for {player['jid']}.")
             else:
                 # No response; automatically discard the oldest plant (excluding the just bought one)
                 if discardable_plants:
                     plant_to_discard = discardable_plants[0]
                     player["power_plants"].remove(plant_to_discard)
-                    print(f"No response from {player['jid']} on discard. Automatically discarding power plant {plant_to_discard.min_bid}.")
+                    update_log(f"No response from {player['jid']} on discard. Automatically discarding power plant {plant_to_discard.min_bid}.")
                 else:
-                    print(f"No discardable plants for {player['jid']}.")
+                    update_log(f"No discardable plants for {player['jid']}.")
 
         def get_player_power_plant_by_number(self, player, number):
             for plant in player["power_plants"]:
@@ -472,7 +471,7 @@ class GameManagerAgent(Agent):
             }
 
         async def phase3(self):
-            print("Phase 3: Buy Resources")
+            update_log("Phase 3: Buy Resources")
             # Players buy resources in reverse player order
             player_order = self.get_players_in_reverse_order()
             for player in player_order:
@@ -480,7 +479,7 @@ class GameManagerAgent(Agent):
 
             # Proceed to Phase 4
             self.current_phase = "phase4"
-            print("Moving to Phase 4")
+            update_log("Moving to Phase 4")
 
         async def handle_resource_purchase(self, player):
             msg = Message(to=player["jid"])
@@ -498,7 +497,7 @@ class GameManagerAgent(Agent):
                     data = json.loads(response.body)
                     purchases = data.get("purchases", {})
                 except json.JSONDecodeError:
-                    print(f"Invalid JSON response from {player['jid']} in resource purchase phase.")
+                    #update_log(f"Invalid JSON response from {player['jid']} in resource purchase phase.")
                     purchases = {}
 
                 total_cost = 0
@@ -511,7 +510,7 @@ class GameManagerAgent(Agent):
                         self.environment.resource_market.in_market[resource] -= amount
                         total_cost += price
                     else:
-                        print(f"{player['jid']} cannot purchase {amount} of {resource}")
+                        update_log(f"{player['jid']} cannot purchase {amount} of {resource}")
 
                 # Notify player of the purchase result
                 msg = Message(to=player["jid"])
@@ -523,7 +522,7 @@ class GameManagerAgent(Agent):
                 })
                 await self.send(msg)
             else:
-                print(f"No response from {player['jid']} in resource purchase phase.")
+                update_log(f"No response from {player['jid']} in resource purchase phase.")
 
         def calculate_resource_price(self, resource, amount):
             # Implement resource price calculation using the environment's price table
@@ -535,12 +534,12 @@ class GameManagerAgent(Agent):
                 if price is not None:
                     total_price += price
                 else:
-                    print(f"Not enough {resource} available.")
+                    update_log(f"Not enough {resource} available.")
                     break
             return total_price
 
         async def phase4(self):
-            print("Phase 4: Build Houses")
+            update_log("Phase 4: Build Houses")
             # Players build houses in reverse player order
             player_order = self.get_players_in_reverse_order()
             for player in player_order:
@@ -548,7 +547,7 @@ class GameManagerAgent(Agent):
 
             # Proceed to Phase 5
             self.current_phase = "phase5"
-            print("Moving to Phase 5")
+            update_log("Moving to Phase 5")
 
         async def handle_build_houses(self, player):
             msg = Message(to=player["jid"])
@@ -567,7 +566,7 @@ class GameManagerAgent(Agent):
                     data = json.loads(response.body)
                     cities_to_build = data.get("cities", [])
                 except json.JSONDecodeError:
-                    print(f"Invalid JSON response from {player['jid']} in build houses phase.")
+                    #update_log(f"Invalid JSON response from {player['jid']} in build houses phase.")
                     cities_to_build = []
 
                 total_cost = 0
@@ -579,7 +578,7 @@ class GameManagerAgent(Agent):
                         total_cost += cost
                         self.environment.map.update_owner(player["jid"], city_tag)
                     else:
-                        print(f"{player['jid']} cannot build in {city_tag}")
+                        update_log(f"{player['jid']} cannot build in {city_tag}")
 
                 # Notify player of the build result
                 msg = Message(to=player["jid"])
@@ -591,7 +590,7 @@ class GameManagerAgent(Agent):
                 })
                 await self.send(msg)
             else:
-                print(f"No response from {player['jid']} in build houses phase.")
+                update_log(f"No response from {player['jid']} in build houses phase.")
 
         def calculate_building_cost(self, player, city_tag):
             # Implement building cost calculation using the environment's building cost
@@ -613,7 +612,7 @@ class GameManagerAgent(Agent):
             return False
 
         async def phase5(self):
-            print("Phase 5: Bureaucracy")
+            update_log("Phase 5: Bureaucracy")
 
             # Request cities_powered from all players
             for player_id, player in self.players.items():
@@ -623,7 +622,7 @@ class GameManagerAgent(Agent):
                     "action": "power_cities_request"
                 })
                 await self.send(msg)
-                print(f"Requested cities to power from Player {player_id}.")
+                update_log(f"Requested cities to power from Player {player_id}.")
 
             # Collect responses
             for player_id, player in self.players.items():
@@ -639,39 +638,27 @@ class GameManagerAgent(Agent):
                         expected_income = city_cashback[cities_powered] if cities_powered < len(city_cashback) else \
                         city_cashback[-1]
 
-                        '''
-                        actual_income = updated_elektro - player["elektro"]
-                        if actual_income != expected_income:
-                            print(
-                                f"Warning: Player {player_id} reported unexpected income. Expected: {expected_income}, Got: {actual_income}.")
-                        player["elektro"] = updated_elektro'''
-
                         # Deduct consumed resources
                         for resource, amount in resources_consumed.items():
                             if resource in player["resources"]:
                                 player["resources"][resource] -= amount
                                 if player["resources"][resource] < 0:
                                     player["resources"][resource] = 0  # Prevent negative resources
-                                print(f"Player {player_id}: Consumed {amount} of {resource}.")
+                                update_log(f"Player {player_id}: Consumed {amount} of {resource}.")
 
                         # Update player's powered cities
                         player["cities_powered"] = cities_powered
 
-                        '''
-                        print(f"Player {player_id} powered {cities_powered} cities,"
-                              f" earned {expected_income} Elektro, "
-                              f"and consumed {resources_consumed} resources.")'''
-
             # Resupply the resource market
             self.resupply_resource_market()
-            print("Resupplied the resource market.")
+            update_log("Resupplied the resource market.")
 
             # Update the power plant market
             self.update_power_plant_market_phase5()
-            print("Updated the power plant market.")
-            print("Player status before game end check:")
+            update_log("Updated the power plant market.")
+            update_log("Player status before game end check:")
             for player_id, player_data in self.players.items():
-                print(
+                update_log(
                     f"Player {player_id}: Cities owned = {len(player_data['cities'])}, Cities = {player_data['cities']}")
 
             # Check for game end conditions
@@ -681,13 +668,13 @@ class GameManagerAgent(Agent):
                 # Proceed to the next round
                 self.current_phase = "phase1"
                 self.round += 1
-                print(f"Starting Round {self.round}")
+                update_log(f"Starting Round {self.round}")
 
         def calculate_income(self, player):
             cities_powered = self.calculate_cities_powered(player)
             income_table = self.environment.city_cashback
             income = income_table[cities_powered] if cities_powered < len(income_table) else income_table[-1]
-            print(f"Player {player['jid']} powers {cities_powered} cities and earns {income} elektro.")
+            update_log(f"Player {player['jid']} powers {cities_powered} cities and earns {income} elektro.")
             return income
 
         def calculate_cities_powered(self, player):
@@ -741,11 +728,11 @@ class GameManagerAgent(Agent):
 
             # Ensure valid step and player count
             if current_step not in resource_replenishment_table:
-                print(f"Invalid game step: {current_step}. Cannot resupply resources.")
+                update_log(f"Invalid game step: {current_step}. Cannot resupply resources.")
                 return
 
             if nplayers not in resource_replenishment_table[current_step]:
-                print(f"Invalid number of players: {nplayers}. Cannot resupply resources.")
+                update_log(f"Invalid number of players: {nplayers}. Cannot resupply resources.")
                 return
 
             # Get replenishment rates for the current step and number of players
@@ -761,7 +748,7 @@ class GameManagerAgent(Agent):
 
                 # Update the resource market with the new quantity
                 resource_market.in_market[resource] = new_quantity
-                print(f"Resupplied {resource}: {current_quantity} -> {new_quantity} (Added: {amount})")
+                update_log(f"Resupplied {resource}: {current_quantity} -> {new_quantity} (Added: {amount})")
 
         def update_resource_prices(resource_market, price_table):
             """
@@ -774,7 +761,7 @@ class GameManagerAgent(Agent):
 
             for resource, quantity in resource_market.items():
                 if resource not in price_table:
-                    print(f"No pricing information available for {resource}. Skipping.")
+                    update_log(f"No pricing information available for {resource}. Skipping.")
                     continue
 
                 # Uranium has direct mapping, handle it separately
@@ -814,14 +801,14 @@ class GameManagerAgent(Agent):
             for player_id, player_data in self.players.items():
                 num_cities = len(player_data["cities"])
                 if num_cities >= end_game_cities:
-                    print(
+                    update_log(
                         f"Game has ended. Player {player_id} has connected {num_cities} cities (required: {end_game_cities}).")
                     return True
 
             return False
 
         async def end_game(self):
-            print("Game Over. Calculating final scores.")
+            update_log("Game Over. Calculating final scores.")
             # Determine the winner
             max_cities_powered = 0
             winner = None
@@ -832,8 +819,10 @@ class GameManagerAgent(Agent):
                     winner = player
                 elif cities_powered == max_cities_powered:
                     # Tie-breaker: player with more elektro
-                    print("player[elektro]", {player["elektro"]})
-                    print("winner[elektro]", {winner["elektro"]})
+                    player_elektro = player["elektro"]
+                    winner_elektro = winner["elektro"]
+                    update_log("player[elektro]", {player_elektro})
+                    update_log("winner[elektro]", {winner_elektro})
                     if player["elektro"] > winner["elektro"]:
                         winner = player
 
