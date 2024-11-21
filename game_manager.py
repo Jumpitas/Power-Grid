@@ -600,7 +600,6 @@ class GameManagerAgent(Agent):
                 occupancy = len(city.get('owners', []))
                 if occupancy < self.current_step:
                     building_cost = self.environment.building_cost[self.current_step]
-                    # For simplicity, assume connection cost is zero
                     return building_cost
             return float('inf')
 
@@ -743,8 +742,7 @@ class GameManagerAgent(Agent):
             # Apply replenishment
             for resource, amount in rates.items():
                 current_quantity = resource_market.in_market.get(resource, 0)
-                max_quantity = resource_market.max_market.get(resource,
-                                                              float('inf'))  # Assume a maximum capacity exists
+                max_quantity = resource_market.max_market.get(resource, float('inf'))
                 new_quantity = min(current_quantity + amount, max_quantity)
 
                 # Update the resource market with the new quantity

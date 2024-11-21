@@ -501,7 +501,7 @@ class PowerGridPlayerAgent(Agent):
                         response.body = json.dumps({
                             "phase": "check_game_end",
                             "action": "cities_owned",
-                            "cities_owned": self.agent.cities_owned  # Assuming this attribute tracks owned cities
+                            "cities_owned": self.agent.cities_owned
                         })
                         await self.send(response)
                         update_log(
@@ -520,7 +520,7 @@ class PowerGridPlayerAgent(Agent):
 
                 elif phase == "end_game" and action == "get_final_stats":
                     # Respond with the number of cities powered and current Elektro
-                    cities_powered = len(self.agent.cities_powered)  # Adjust based on actual data structure
+                    cities_powered = len(self.agent.cities_powered)
                     elektro = self.agent.elektro  # Current Elektro balance
                     response = Message(to=sender)
                     response.body = json.dumps({
@@ -833,7 +833,7 @@ class PowerGridPlayerAgent(Agent):
 
             # Handle occupancy score
             if isinstance(city_data, list):
-                owners = city_data  # Assume the list represents the 'owners'
+                owners = city_data
             elif isinstance(city_data, dict):
                 owners = city_data.get('owners', [])
             else:
